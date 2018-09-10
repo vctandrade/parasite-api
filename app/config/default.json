@@ -1,0 +1,10 @@
+{
+  "Discover": {
+    "port": 12345,
+    "mastersRequired": 0
+  },
+  "Redis": {
+    "host": "redis",
+    "port": 6379
+  }
+}

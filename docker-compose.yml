@@ -1,0 +1,22 @@
+version: '3.7'
+services:
+  connector:
+    image: parasite-api
+    command: connector
+    environment:
+      - NODE_ENV=development
+    deploy:
+      replicas: 2
+    depends_on:
+      - redis
+  game:
+    image: parasite-api
+    command: game
+    environment:
+      - NODE_ENV=development
+    deploy:
+      replicas: 2
+    depends_on:
+      - redis
+  redis:
+    image: redis:alpine

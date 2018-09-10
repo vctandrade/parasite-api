@@ -1,0 +1,37 @@
+{
+  "name": "parasite-api",
+  "version": "0.1.0",
+  "description": "The backend of Parasite: the Game",
+  "scripts": {
+    "test": "eslint .",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "game",
+    "server"
+  ],
+  "author": "Victor Andrade de Almeida",
+  "license": "MIT",
+  "repository": "github:vctandrade/parasite-api",
+  "engines": {
+    "node": ">=10.0.0",
+    "npm": ">=6.0.0"
+  },
+  "dependencies": {
+    "bee-queue": "^1.2.2",
+    "commander": "^2.18.0",
+    "config": "^2.0.1",
+    "node-discover": "^1.0.0",
+    "redis": "^2.8.0",
+    "uuid": "^3.3.2",
+    "ws": "^6.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^5.5.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-node": "^7.0.1",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0"
+  }
+}
