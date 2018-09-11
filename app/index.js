@@ -1,5 +1,5 @@
 const config = require('config')
-const modules = require('./modules')
+const services = require('./services')
 const program = require('commander')
 
 const Discover = require('node-discover')
@@ -7,18 +7,17 @@ const Discover = require('node-discover')
 program
   .version('0.1.0')
   .description('starts one of the Parasite game servers')
-  .arguments('<module>')
-  .action(function (module) {
-    const init = modules[module]
+  .arguments('<target>')
+  .action(function (target) {
+    const init = services[target]
 
     if (init === undefined) {
-      console.log('Module does not exist')
+      console.log('Service does not exist')
       return
     }
 
-    const discover = Discover(config.get('Discover'))
-    discover.advertise(module)
-    init(discover)
+    const d = Discover(config.get('Discover'))
+    init(d)
   })
 
 program
