@@ -4,7 +4,9 @@ services:
     image: parasite-api
     command: connector
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
+    ports:
+      - 5000:80
     deploy:
       replicas: 2
     depends_on:
@@ -13,7 +15,7 @@ services:
     image: parasite-api
     command: game
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
     deploy:
       replicas: 2
     depends_on:
