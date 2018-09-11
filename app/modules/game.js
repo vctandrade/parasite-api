@@ -1,16 +1,14 @@
 const config = require('config')
+const uuid = require('uuid/v4')
 
 const Queue = require('bee-queue')
 
 module.exports = function init () {
-  // Example
-
-  const queue = new Queue('jobs', {
+  const createRoom = new Queue('create-room', {
     redis: config.get('Redis')
   })
 
-  queue.process(async function (job) {
-    console.log(job.data)
-    return 'output'
+  createRoom.process(async job => {
+    return uuid()
   })
 }
