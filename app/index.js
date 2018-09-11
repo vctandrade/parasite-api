@@ -1,4 +1,5 @@
 const config = require('config')
+const exitHook = require('exit-hook')
 const services = require('./services')
 const program = require('commander')
 
@@ -17,6 +18,8 @@ program
     }
 
     const d = Discover(config.get('Discover'))
+
+    exitHook(d.stop)
     init(d)
   })
 

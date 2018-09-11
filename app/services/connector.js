@@ -1,4 +1,5 @@
 const config = require('config')
+const exitHook = require('exit-hook')
 
 const EventEmitter = require('events')
 const Queue = require('bee-queue')
@@ -57,7 +58,7 @@ const routes = {
   }
 }
 
-// TODO: refactor and graceful shutdown
+// TODO: refactor
 const queues = {}
 function getQueue (name) {
   const settings = {
@@ -79,6 +80,12 @@ module.exports = function init () {
   })
 
   wss.on('connection', ws => {
+    ws.isAlive = true
+
+    ws.on('pong', () => {
+      ws.isAlive = true
+    })
+
     const s = new Session(ws)
 
     s.on('login', id => {
@@ -88,21 +95,18 @@ module.exports = function init () {
         users.delete(id)
       })
     })
-
-    ws.isAlive = true
-    ws.on('ping', heartbeat)
   })
-
-  function heartbeat () {
-    this.isAlive = true
-  }
 
   function healthcheck () {
     wss.clients.forEach(ws => {
-      if (ws.isAlive) ws.isAlive = false
-      else ws.terminate()
+      if (ws.isAlive === false) ws.terminate()
+      else {
+        ws.isAlive = false
+        ws.ping()
+      }
     })
   }
 
   setInterval(healthcheck, config.get('WebSocket.timeout'))
+  exitHook(wss.close.bind(wss))
 }

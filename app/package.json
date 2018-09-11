@@ -21,6 +21,7 @@
     "bee-queue": "^1.2.2",
     "commander": "^2.18.0",
     "config": "^2.0.1",
+    "exit-hook": "^2.0.0",
     "node-discover": "^1.0.0",
     "redis": "^2.8.0",
     "uuid": "^3.3.2",
