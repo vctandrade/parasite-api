@@ -21,7 +21,11 @@ module.exports = class Proxy {
     }
   }
 
-  get (service) {
+  get (id) {
+    return this.channels.get(id)
+  }
+
+  getAny (service) {
     var pool
 
     pool = [...this.channels.values()]

@@ -57,21 +57,7 @@ module.exports = class Channel extends EventEmitter {
     this.ws = new WebSocket(url)
     this.ws.on('message', data => this.handle(data))
 
-    var interval
-    const wait = new Promise((resolve, reject) => {
-      var retries = 5
-
-      const check = () => {
-        retries--
-
-        if (this.ws.readyState === WebSocket.OPEN) resolve()
-        else if (retries === 0) reject(new Error('Timeout'))
-      }
-
-      interval = setInterval(check, 200)
-    })
-
-    return wait.finally(() => clearInterval(interval))
+    return new Promise(resolve => this.ws.once('open', resolve))
   }
 
   close () {
