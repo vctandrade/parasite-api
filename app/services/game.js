@@ -1,3 +1,6 @@
 
-module.exports = function init () {
+module.exports = class Game {
+  async createRoom () {
+    return 'oi'
+  }
 }

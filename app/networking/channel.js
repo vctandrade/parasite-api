@@ -11,18 +11,18 @@ module.exports = class Channel {
     this.node = node
   }
 
-  async send (data) {
-    this.open()
+  async send (route, args) {
+    await this.open()
 
     const id = this.nc++
-    const message = JSON.stringify({ id, data })
+    const message = JSON.stringify({ id, route, args })
 
     this.ws.send(message)
     return id
   }
 
-  async request (data) {
-    const id = this.send(data)
+  async request (route, args) {
+    const id = await this.send(route, args)
 
     return new Promise((resolve, reject) => {
       this.cb.set(id, resolve)
@@ -40,12 +40,31 @@ module.exports = class Channel {
     if (callback) callback(data)
   }
 
-  open () {
+  async open () {
     if (this.ws) return
-    const { address, port } = this.node
 
-    this.ws = new WebSocket(`ws://${address}:${port}`)
+    const address = this.node.address
+    const port = config.get('WebSocket.port')
+    const url = `ws://${address}:${port}`
+
+    this.ws = new WebSocket(url)
     this.ws.on('message', data => this.handle(data))
+
+    var interval
+    const wait = new Promise((resolve, reject) => {
+      var retries = 5
+
+      const check = () => {
+        retries--
+
+        if (this.ws.readyState === WebSocket.OPEN) resolve()
+        else if (retries === 0) reject(new Error('Timeout'))
+      }
+
+      interval = setInterval(check, 200)
+    })
+
+    return wait.finally(() => clearInterval(interval))
   }
 
   close () {
