@@ -4,13 +4,14 @@ const services = require('./services')
 const program = require('commander')
 
 const Discover = require('node-discover')
+const Proxy = require('./networking/proxy')
 
 program
   .version('0.1.0')
   .description('starts one of the Parasite game servers')
-  .arguments('<target>')
-  .action(function (target) {
-    const init = services[target]
+  .arguments('<service>')
+  .action(function (service) {
+    const init = services[service]
 
     if (init === undefined) {
       console.log('Service does not exist')
@@ -18,9 +19,14 @@ program
     }
 
     const d = Discover(config.get('Discover'))
+    const p = new Proxy()
 
-    exitHook(d.stop)
-    init(d)
+    d.on('added', node => p.add(node))
+    d.on('removed', node => p.remove(node))
+    d.advertise(service)
+
+    exitHook(() => d.stop(), p.close())
+    init(p)
   })
 
 program

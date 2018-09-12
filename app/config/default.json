@@ -9,6 +9,7 @@
   },
   "WebSocket": {
     "port": 80,
-    "timeout": 2000
+    "timeout": 2000,
+    "checkInterval": 30000
   }
 }
