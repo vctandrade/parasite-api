@@ -13,6 +13,13 @@ module.exports = class Connector {
     this.proxy = proxy
     this.sessions = new Map()
     this.redis = redis.createClient(config.get('Redis'))
+
+    proxy.on('game', data => {
+      const { user, message } = data
+      const session = this.sessions.get(user)
+
+      if (session) session.push(message)
+    })
   }
 
   async login (session, args) {
@@ -20,27 +27,16 @@ module.exports = class Connector {
 
     if (session.state.user !== undefined) return { error: err.ALREADY_LOGGED }
 
-    session.state.user = user
     this.sessions.set(user, session)
-
     session.ws.on('close', () => this.sessions.delete(user))
 
-    const room = await this.redis.hget('user', user)
-    const node = await this.redis.hget('room', room)
-
-    if (node === null) {
-      this.redis.hdel('user', user)
-
-      session.state.room = null
-      session.state.channel = null
-
-      return { error: null, room: null }
+    session.state = {
+      user,
+      room: null,
+      node: null
     }
 
-    session.state.room = room
-    session.state.channel = this.proxy.get(node)
-
-    return { error: null, room }
+    return { error: null }
   }
 
   async createRoom (session) {
@@ -51,10 +47,6 @@ module.exports = class Connector {
     const room = await channel.request('createRoom')
 
     this.redis.hset('room', room, channel.node.id)
-    this.redis.hset('user', session.state.user, room)
-
-    session.state.room = room
-    session.state.channel = channel
 
     return { error: null, room }
   }
@@ -66,12 +58,9 @@ module.exports = class Connector {
     if (session.state.room !== null) return { error: err.ALREADY_IN_ROOM }
 
     const node = await this.redis.hget('room', room)
-    const channel = this.proxy.get(node)
-
-    this.redis.hset('user', session.state.user, room)
 
     session.state.room = room
-    session.state.channel = channel
+    session.state.node = node
 
     return { error: null }
   }
@@ -80,10 +69,8 @@ module.exports = class Connector {
     if (session.state.user === undefined) return { error: err.NOT_LOGGED }
     if (session.state.room === null) return { error: err.NOT_IN_ROOM }
 
-    this.redis.hdel('user', session.state.user)
-
     session.state.room = null
-    session.state.channel = null
+    session.state.node = null
 
     return { error: null }
   }
