@@ -1,9 +1,12 @@
 const config = require('config')
 
+const EventEmitter = require('events')
 const WebSocket = require('ws')
 
-module.exports = class Channel {
+module.exports = class Channel extends EventEmitter {
   constructor (node) {
+    super()
+
     this.nc = 0
     this.ws = null
     this.cb = new Map()
@@ -36,8 +39,12 @@ module.exports = class Channel {
 
   handle (message) {
     const { id, data } = JSON.parse(message)
-    const callback = this.cb.get(id)
-    if (callback) callback(data)
+
+    if (id === null) this.emit('push', data)
+    else {
+      const callback = this.cb.get(id)
+      if (callback) callback(data)
+    }
   }
 
   async open () {

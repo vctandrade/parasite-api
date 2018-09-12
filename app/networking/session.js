@@ -1,10 +1,13 @@
-const EventEmitter = require('events')
+const WebSocket = require('ws')
 
-module.exports = class Session extends EventEmitter {
+module.exports = class Session {
   constructor (ws) {
-    super()
-
     this.ws = ws
-    this.info = {}
+    this.state = {}
+  }
+
+  push (data) {
+    const message = JSON.stringify({ id: null, data })
+    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(message)
   }
 }

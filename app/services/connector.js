@@ -7,15 +7,17 @@ module.exports = class Connector {
   async login (session, args) {
     const { id } = args
 
-    if (session.info.user !== undefined) {
+    if (session.state.user !== undefined) {
       return { error: 'Already logged in' }
     }
 
-    session.info.user = { id }
-    session.emit('login', id)
+    session.state.user = { id }
   }
 
   async createRoom (session) {
-    return this.proxy.get('game').request('createRoom', {})
+    const channel = this.proxy.get('game')
+
+    channel.on('push', data => session.push(data))
+    return channel.request('createRoom', {})
   }
 }
