@@ -8,7 +8,7 @@ const Proxy = require('./networking/proxy')
 const Server = require('./networking/server')
 
 program
-  .version('0.2.0')
+  .version('0.3.0')
   .description('starts one of the Parasite game servers')
   .arguments('<service>')
   .action(function (id) {
