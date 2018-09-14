@@ -1,10 +1,10 @@
 const config = require('config')
 const exitHook = require('exit-hook')
+const redis = require('async-redis')
 const services = require('./services')
 const program = require('commander')
 
-const Discover = require('node-discover')
-const Proxy = require('./networking/proxy')
+const Discovery = require('./networking/discovery')
 const Server = require('./networking/server')
 
 program
@@ -19,18 +19,16 @@ program
       return
     }
 
-    const d = new Discover(config.get('Discover'))
-    const p = new Proxy()
-    const s = new Server(new Service(p))
+    const redisClient = redis.createClient(config.get('Redis'))
 
-    d.on('added', node => p.add(node))
-    d.on('removed', node => p.remove(node))
-    d.advertise(id)
+    const discovery = new Discovery(id, redisClient)
+    const service = new Service(discovery, redisClient)
+    const server = new Server(service)
 
     exitHook(() => {
-      d.stop()
-      p.close()
-      s.close()
+      redisClient.quit()
+      discovery.stop()
+      server.close()
     })
   })
 

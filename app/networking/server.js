@@ -17,10 +17,7 @@ module.exports = class Server {
       ws.on('pong', () => { ws.isAlive = true })
     })
 
-    this.interval = setInterval(
-      () => this.healthcheck(),
-      config.get('WebSocket.checkInterval')
-    )
+    this.interval = setInterval(() => this.healthcheck(), config.get('WebSocket.checkInterval'))
   }
 
   async handle (session, data) {

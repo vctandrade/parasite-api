@@ -1,7 +1,6 @@
 {
-  "Discover": {
-    "port": 12345,
-    "mastersRequired": 0
+  "Discovery": {
+    "interval": 5000
   },
   "Redis": {
     "host": "redis",
@@ -10,6 +9,6 @@
   "WebSocket": {
     "port": 80,
     "timeout": 2000,
-    "checkInterval": 30000
+    "checkInterval": 10000
   }
 }

@@ -1,14 +1,13 @@
-const config = require('config')
 const errors = require('../shared/errors')
-const redis = require('async-redis')
 
 module.exports = class Connector {
-  constructor (proxy) {
-    this.proxy = proxy
-    this.sessions = new Map()
-    this.redis = redis.createClient(config.get('Redis'))
+  constructor (discovery, redisClient) {
+    this.discovery = discovery
+    this.redis = redisClient
 
-    proxy.on('game', data => {
+    this.sessions = new Map()
+
+    discovery.on('game', data => {
       const { userID, content } = data
       const session = this.sessions.get(userID)
 
@@ -27,7 +26,7 @@ module.exports = class Connector {
     session.state = {
       userID,
       roomID: null,
-      nodeID: null
+      hostname: null
     }
 
     return { error: null }
@@ -37,10 +36,10 @@ module.exports = class Connector {
     if (session.state.userID === undefined) return { error: errors.NOT_LOGGED }
     if (session.state.roomID !== null) return { error: errors.ALREADY_IN_ROOM }
 
-    const channel = this.proxy.getAny('game')
+    const channel = this.discovery.getAny('game')
     const roomID = await channel.request('createRoom')
 
-    this.redis.hset('room', roomID, channel.node.id)
+    this.redis.hset('room', roomID, channel.hostname)
 
     return { error: null, roomID }
   }
@@ -51,8 +50,8 @@ module.exports = class Connector {
     if (session.state.userID === undefined) return { error: errors.NOT_LOGGED }
     if (session.state.roomID !== null) return { error: errors.ALREADY_IN_ROOM }
 
-    const nodeID = await this.redis.hget('room', roomID)
-    const channel = this.proxy.get(nodeID)
+    const hostname = await this.redis.hget('room', roomID)
+    const channel = this.discovery.get(hostname)
 
     if (channel === undefined) return { error: errors.ROOM_INEXISTENT }
 
@@ -61,7 +60,7 @@ module.exports = class Connector {
     if (error !== null) return { error }
 
     session.state.roomID = roomID
-    session.state.nodeID = nodeID
+    session.state.hostname = hostname
 
     return { error: null }
   }
@@ -70,14 +69,14 @@ module.exports = class Connector {
     if (session.state.userID === undefined) return { error: errors.NOT_LOGGED }
     if (session.state.roomID === null) return { error: errors.NOT_IN_ROOM }
 
-    const channel = this.proxy.get(session.state.nodeID)
+    const channel = this.discovery.get(session.state.hostname)
 
     if (channel !== undefined) {
       channel.send('leaveRoom', { userID: session.state.userID, roomID: session.state.roomID })
     }
 
     session.state.roomID = null
-    session.state.nodeID = null
+    session.state.hostname = null
 
     return { error: null }
   }
