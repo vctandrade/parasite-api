@@ -8,5 +8,7 @@ function error (message) {
 module.exports = {
   INTERNAL_ERROR: error('Internal Error'),
   UNAUTHORIZED: error('Client Unauthorized'),
-  BAD_REQUEST: error('Request Invalid')
+  BAD_REQUEST: error('Request Invalid'),
+
+  ROOM_FULL: error('Room Full')
 }

@@ -6,11 +6,17 @@ const shortid = require('shortid')
 
 class Room {
   constructor (roster) {
-    this.roster = roster
     this.users = new Map()
+    this.roster = _.map(roster, id => {
+      const Job = jobs[id]
+      if (Job === undefined) throw error.BAD_REQUEST
+      return new Job()
+    })
   }
 
   add (userID, session) {
+    if (this.users.size === this.roster.length) throw error.ROOM_FULL
+
     this.users.set(userID, session)
     this.pushState()
   }
@@ -37,13 +43,7 @@ module.exports = class Game {
     const { roster } = args
 
     const roomID = shortid.generate()
-    const room = new Room(
-      _.map(roster, id => {
-        const Job = jobs[id]
-        if (Job === undefined) throw error.BAD_REQUEST
-        return new Job()
-      })
-    )
+    const room = new Room(roster)
 
     this.rooms.set(roomID, room)
 
