@@ -28,11 +28,11 @@ module.exports = class Connector {
     }
   }
 
-  async createRoom (session) {
+  async createRoom (session, args) {
     if (session.state.userID === undefined) throw error.UNAUTHORIZED
 
     const channel = this.discovery.getAny('game')
-    const response = await channel.request('createRoom')
+    const response = await channel.request('createRoom', args)
 
     await this.redis.hset('room', response.roomID, channel.hostname)
 
@@ -49,10 +49,12 @@ module.exports = class Connector {
 
     if (hostname === null) throw error.BAD_REQUEST
 
-    await channel.request('joinRoom', { userID: session.state.userID, roomID })
+    const room = await channel.request('joinRoom', { userID: session.state.userID, roomID })
 
     session.state.roomID = roomID
     session.state.hostname = hostname
+
+    return { room }
   }
 
   async leaveRoom (session) {

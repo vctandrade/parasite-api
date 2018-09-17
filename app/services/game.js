@@ -1,10 +1,12 @@
-const config = require('config')
+const _ = require('lodash')
+
+const jobs = require('../shared/jobs')
 const error = require('../shared/error')
-const redis = require('async-redis')
 const shortid = require('shortid')
 
 class Room {
-  constructor () {
+  constructor (roster) {
+    this.roster = roster
     this.users = new Map()
   }
 
@@ -29,12 +31,19 @@ class Room {
 module.exports = class Game {
   constructor () {
     this.rooms = new Map()
-    this.redis = redis.createClient(config.get('Redis'))
   }
 
-  async createRoom (session) {
+  async createRoom (session, args) {
+    const { roster } = args
+
     const roomID = shortid.generate()
-    const room = new Room()
+    const room = new Room(
+      _.map(roster, id => {
+        const Job = jobs[id]
+        if (Job === undefined) throw error.BAD_REQUEST
+        return new Job()
+      })
+    )
 
     this.rooms.set(roomID, room)
 
@@ -45,10 +54,9 @@ module.exports = class Game {
     const { userID, roomID } = args
 
     const room = this.rooms.get(roomID)
-
-    if (room === undefined) throw error.BAD_REQUEST
-
     room.add(userID, session)
+
+    return { roster: room.roster }
   }
 
   async leaveRoom (session, args) {
