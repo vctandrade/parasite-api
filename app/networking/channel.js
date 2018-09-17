@@ -17,19 +17,24 @@ module.exports = class Channel extends EventEmitter {
 
   async send (route, args) {
     await this.open()
+    const message = JSON.stringify({ id: null, route, args })
+    this.ws.send(message)
+  }
+
+  async request (route, args) {
+    await this.open()
 
     const id = this.nc++
     const message = JSON.stringify({ id, route, args })
 
     this.ws.send(message)
-    return id
-  }
-
-  async request (route, args) {
-    const id = await this.send(route, args)
 
     const promise = new Promise((resolve, reject) => {
-      this.cb.set(id, resolve)
+      this.cb.set(id, body => {
+        if (body.error === undefined) resolve(body.data)
+        else reject(body.error)
+      })
+
       setTimeout(() => reject(new Error('Timeout')), config.get('WebSocket.timeout'))
     })
 
@@ -38,12 +43,12 @@ module.exports = class Channel extends EventEmitter {
   }
 
   handle (message) {
-    const { id, data } = JSON.parse(message)
+    const { id, body } = JSON.parse(message)
 
-    if (id === null) this.emit('push', data)
+    if (id === null) this.emit('push', body)
     else {
       const callback = this.cb.get(id)
-      if (callback) callback(data)
+      if (callback) callback(body)
     }
   }
 

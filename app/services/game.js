@@ -1,5 +1,5 @@
 const config = require('config')
-const errors = require('../shared/errors')
+const error = require('../shared/error')
 const redis = require('async-redis')
 const shortid = require('shortid')
 
@@ -21,7 +21,7 @@ class Room {
   pushState () {
     const state = [...this.users.keys()]
     this.users.forEach((session, userID) => {
-      session.push({ userID, content: { state } })
+      session.push('state', { userID, content: state })
     })
   }
 }
@@ -37,17 +37,18 @@ module.exports = class Game {
     const room = new Room()
 
     this.rooms.set(roomID, room)
-    return roomID
+
+    return { roomID }
   }
 
   async joinRoom (session, args) {
     const { userID, roomID } = args
 
     const room = this.rooms.get(roomID)
-    if (room === undefined) return errors.ROOM_INEXISTENT
+
+    if (room === undefined) throw error.BAD_REQUEST
 
     room.add(userID, session)
-    return null
   }
 
   async leaveRoom (session, args) {

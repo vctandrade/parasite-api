@@ -1,4 +1,5 @@
 const config = require('config')
+const error = require('../shared/error')
 
 const Session = require('./session')
 const WebSocket = require('ws')
@@ -9,11 +10,11 @@ module.exports = class Server {
 
     this.wss = new WebSocket.Server({ port: config.get('WebSocket.port') })
     this.wss.on('connection', ws => {
-      const s = new Session(ws)
-
       ws.isAlive = true
 
-      ws.on('message', data => this.handle(s, data))
+      const session = new Session(ws)
+
+      ws.on('message', data => this.handle(session, data))
       ws.on('pong', () => { ws.isAlive = true })
     })
 
@@ -25,9 +26,15 @@ module.exports = class Server {
 
     const method = this.service[route]
     if (method) {
-      const data = await method.call(this.service, session, args)
-      if (data !== undefined) {
-        const message = JSON.stringify({ id, data })
+      const body = {}
+
+      body.data = await method.call(this.service, session, args)
+        .catch(reason => {
+          body.error = reason instanceof Error ? error.INTERNAL_ERROR : reason
+        })
+
+      if (id !== null) {
+        const message = JSON.stringify({ id, body })
         session.ws.send(message)
       }
     }

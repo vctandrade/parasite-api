@@ -6,8 +6,9 @@ module.exports = class Session {
     this.state = {}
   }
 
-  async push (data) {
-    const message = JSON.stringify({ id: null, data })
+  async push (topic, data) {
+    const body = { topic, data }
+    const message = JSON.stringify({ id: null, body })
     if (this.ws.readyState === WebSocket.OPEN) this.ws.send(message)
   }
 }

@@ -26,7 +26,7 @@ module.exports = class Discovery extends EventEmitter {
       if (c !== undefined) c.isAlive = true
       else {
         const c = new Channel(service, hostname)
-          .on('push', data => this.emit(service, data))
+          .on('push', body => this.emit(service, body))
 
         c.isAlive = true
         this.channels.set(hostname, c)
@@ -55,7 +55,7 @@ module.exports = class Discovery extends EventEmitter {
   }
 
   getAny (service) {
-    var pool
+    let pool
 
     pool = [...this.channels.values()]
     pool = _.filter(pool, c => c.service === service)
