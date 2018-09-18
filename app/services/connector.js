@@ -1,5 +1,7 @@
 const error = require('../shared/error')
 
+const { version } = require('../package.json')
+
 module.exports = class Connector {
   constructor (discovery, redisClient) {
     this.discovery = discovery
@@ -13,6 +15,10 @@ module.exports = class Connector {
 
       if (session) session.push(topic, data.content)
     })
+  }
+
+  async info () {
+    return { version }
   }
 
   async login (session, args) {

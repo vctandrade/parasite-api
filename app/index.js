@@ -7,8 +7,10 @@ const program = require('commander')
 const Discovery = require('./networking/discovery')
 const Server = require('./networking/server')
 
+const { version } = require('./package.json')
+
 program
-  .version('0.4.0')
+  .version(version)
   .description('starts one of the Parasite game servers')
   .arguments('<service>')
   .action(function (id) {
