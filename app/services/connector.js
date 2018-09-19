@@ -11,7 +11,7 @@ module.exports = class Connector {
 
     discovery.on('game', body => {
       const { topic, data } = body
-      const session = this.sessions.get(data.userID)
+      const session = this.sessions.get(data.playerID)
 
       if (session) session.push(topic, data.content)
     })
@@ -22,20 +22,20 @@ module.exports = class Connector {
   }
 
   async login (session, args) {
-    const { userID } = args
+    const { playerID } = args
 
-    this.sessions.set(userID, session)
-    session.ws.on('close', () => this.sessions.delete(userID))
+    this.sessions.set(playerID, session)
+    session.ws.on('close', () => this.sessions.delete(playerID))
 
     session.state = {
-      userID,
+      playerID,
       roomID: null,
       hostname: null
     }
   }
 
   async createRoom (session, args) {
-    if (session.state.userID === undefined) throw error.UNAUTHORIZED
+    if (session.state.playerID === undefined) throw error.UNAUTHORIZED
 
     const channel = this.discovery.getAny('game')
     const response = await channel.request('createRoom', args)
@@ -48,14 +48,14 @@ module.exports = class Connector {
   async joinRoom (session, args) {
     const { roomID } = args
 
-    if (session.state.userID === undefined) throw error.UNAUTHORIZED
+    if (session.state.playerID === undefined) throw error.UNAUTHORIZED
 
     const hostname = await this.redis.hget('room', roomID)
     const channel = this.discovery.get(hostname)
 
     if (hostname === null) throw error.BAD_REQUEST
 
-    const room = await channel.request('joinRoom', { userID: session.state.userID, roomID })
+    const room = await channel.request('joinRoom', { playerID: session.state.playerID, roomID })
 
     session.state.roomID = roomID
     session.state.hostname = hostname
@@ -64,12 +64,12 @@ module.exports = class Connector {
   }
 
   async leaveRoom (session) {
-    if (session.state.userID === undefined) throw error.UNAUTHORIZED
+    if (session.state.playerID === undefined) throw error.UNAUTHORIZED
 
     const channel = this.discovery.get(session.state.hostname)
 
     if (channel !== undefined) {
-      channel.send('leaveRoom', { userID: session.state.userID, roomID: session.state.roomID })
+      channel.send('leaveRoom', { playerID: session.state.playerID, roomID: session.state.roomID })
     }
 
     session.state.roomID = null
