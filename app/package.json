@@ -1,6 +1,6 @@
 {
   "name": "parasite-api",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "description": "The backend of Parasite: the Game",
   "scripts": {
     "test": "eslint .",
@@ -21,7 +21,9 @@
     "async-redis": "^1.1.4",
     "commander": "^2.18.0",
     "config": "^2.0.1",
+    "dotenv": "^6.0.0",
     "exit-hook": "^2.0.0",
+    "google-auth-library": "^2.0.0",
     "lodash": "^4.17.10",
     "shortid": "^2.2.13",
     "ws": "^6.0.0"

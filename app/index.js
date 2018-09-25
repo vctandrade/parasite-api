@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const config = require('config')
 const exitHook = require('exit-hook')
 const redis = require('async-redis')

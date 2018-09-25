@@ -1,5 +1,6 @@
 const error = require('../shared/error')
 
+const { OAuth2Client } = require('google-auth-library')
 const { version } = require('../package.json')
 
 module.exports = class Connector {
@@ -7,6 +8,7 @@ module.exports = class Connector {
     this.discovery = discovery
     this.redis = redisClient
 
+    this.auth = new OAuth2Client()
     this.sessions = new Map()
 
     discovery.on('game', body => {
@@ -22,7 +24,14 @@ module.exports = class Connector {
   }
 
   async login (session, args) {
-    const { playerID } = args
+    const { token } = args
+
+    const ticket = await this.auth.verifyIdToken({ idToken: token, audience: process.env.CLIENT_ID })
+      .catch(reason => {
+        throw error.UNAUTHORIZED
+      })
+
+    const playerID = ticket.getPayload().sub
 
     this.sessions.set(playerID, session)
     session.ws.on('close', () => this.sessions.delete(playerID))
