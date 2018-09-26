@@ -98,7 +98,9 @@ module.exports = class Game {
     const { playerID, nickname, roomID } = args
 
     const room = this.rooms.get(roomID)
+
     room.add(playerID, nickname, session)
+    session.ws.on('close', () => this.leaveRoom(playerID))
 
     return { roster: room.roster }
   }

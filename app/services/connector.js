@@ -81,6 +81,11 @@ module.exports = class Connector {
 
     const room = await channel.request('joinRoom', { playerID: session.state.playerID, nickname, roomID })
 
+    channel.ws.once('close', () => {
+      this.leaveRoom(session)
+      session.push('disconnect')
+    })
+
     session.state.roomID = roomID
     session.state.hostname = hostname
 
