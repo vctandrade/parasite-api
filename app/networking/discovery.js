@@ -19,35 +19,26 @@ module.exports = class Discovery extends EventEmitter {
     this.pub = redisClient
     this.sub = redisClient.duplicate()
 
-    this.sub.on('message', (channel, message) => {
+    this.sub.on('message', (topic, message) => {
       const { service, hostname } = JSON.parse(message)
-      const c = this.channels.get(hostname)
 
-      if (c !== undefined) c.isAlive = true
-      else {
-        const c = new Channel(service, hostname)
-          .on('push', body => this.emit(service, body))
+      if (hostname === this.ad.hostname || this.channels.has(hostname)) return
 
-        c.isAlive = true
-        this.channels.set(hostname, c)
-      }
+      const channel = new Channel(service, hostname)
+
+      channel.on('push', body => this.emit(service, body))
+      channel.on('close', () => this.channels.delete(hostname))
+
+      this.channels.set(hostname, channel)
     })
 
     this.sub.subscribe('discovery')
-    this.interval = setInterval(() => this.heartbeat(), config.get('Discovery.interval'))
+    this.interval = setInterval(() => this.advertise(), config.get('Discovery.interval'))
   }
 
-  heartbeat () {
+  advertise () {
     const message = JSON.stringify(this.ad)
-
     this.pub.publish('discovery', message)
-    this.channels.forEach(c => {
-      if (c.isAlive) c.isAlive = false
-      else {
-        c.close()
-        this.channels.delete(c.hostname)
-      }
-    })
   }
 
   get (hostname) {

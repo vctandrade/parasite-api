@@ -83,7 +83,7 @@ module.exports = class Connector {
 
     channel.ws.once('close', () => {
       this.leaveRoom(session)
-      session.push('disconnect')
+      session.push('kick')
     })
 
     session.state.roomID = roomID

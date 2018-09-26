@@ -10,20 +10,26 @@ module.exports = class Channel extends EventEmitter {
     this.service = service
     this.hostname = hostname
 
+    const port = config.get('WebSocket.port')
+    const url = `ws://${hostname}:${port}`
+
     this.nc = 0
-    this.ws = null
+    this.ws = new WebSocket(url)
     this.cb = new Map()
+
+    this.ws.on('message', data => this.handle(data))
+    this.ws.on('ping', () => { this.isAlive = true })
+    this.ws.on('close', () => this.close())
+
+    this.interval = setInterval(() => this.healthcheck(), config.get('WebSocket.checkInterval'))
   }
 
   async send (route, args) {
-    await this.open()
     const message = JSON.stringify({ id: null, route, args })
     this.ws.send(message)
   }
 
   async request (route, args) {
-    await this.open()
-
     const id = this.nc++
     const message = JSON.stringify({ id, route, args })
 
@@ -42,6 +48,11 @@ module.exports = class Channel extends EventEmitter {
       .finally(() => this.cb.delete(id))
   }
 
+  healthcheck () {
+    if (this.isAlive) this.isAlive = false
+    else this.close()
+  }
+
   handle (message) {
     const { id, body } = JSON.parse(message)
 
@@ -52,19 +63,9 @@ module.exports = class Channel extends EventEmitter {
     }
   }
 
-  async open () {
-    if (this.ws) return
-
-    const port = config.get('WebSocket.port')
-    const url = `ws://${this.hostname}:${port}`
-
-    this.ws = new WebSocket(url)
-    this.ws.on('message', data => this.handle(data))
-
-    return new Promise(resolve => this.ws.once('open', resolve))
-  }
-
   close () {
-    if (this.ws) this.ws.close()
+    clearInterval(this.interval)
+    this.ws.close()
+    this.emit('close')
   }
 }
