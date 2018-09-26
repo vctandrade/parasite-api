@@ -9,6 +9,8 @@ module.exports = class Session {
   async push (topic, data) {
     const body = { topic, data }
     const message = JSON.stringify({ id: null, body })
+
     if (this.ws.readyState === WebSocket.OPEN) this.ws.send(message)
+    else console.error('Push failed')
   }
 }

@@ -4,44 +4,78 @@ const jobs = require('../shared/jobs')
 const error = require('../shared/error')
 const shortid = require('shortid')
 
-class Room {
-  constructor (id, roster) {
+const EventEmitter = require('events')
+
+class Player {
+  constructor (id, nickname, session) {
     this.id = id
+    this.nickname = nickname
+    this.session = session
+  }
+
+  push (topic, data) {
+    this.session.push(topic, { playerID: this.id, content: data })
+  }
+
+  toJSON () {
+    return this.nickname
+  }
+}
+
+class Room extends EventEmitter {
+  constructor (roster) {
+    super()
+
     this.roster = _.map(roster, jobID => {
       const Job = jobs[jobID]
       if (Job === undefined) throw error.BAD_REQUEST
       return new Job()
     })
 
-    this.sessions = new Map()
+    this.players = []
+    this.timer = null
   }
 
-  add (playerID, session) {
-    if (this.sessions.size === this.roster.length) throw error.ROOM_FULL
+  add (playerID, nickname, session) {
+    if (this.timer !== null) throw error.ROOM_FULL
 
-    this.sessions.set(playerID, session)
-    this.pushState()
+    const player = new Player(playerID, nickname, session)
+
+    this.players.push(player)
+    this.push('state', this)
+
+    if (this.players.length === this.roster.length) {
+      this.timer = setTimeout(() => this.close(), 10000)
+    }
   }
 
   remove (playerID) {
-    this.sessions.delete(playerID)
-    this.pushState()
+    _.remove(this.players, player => player.id === playerID)
+    this.push('state', this)
+
+    clearTimeout(this.timer)
+    this.timer = null
   }
 
-  pushState () {
-    const content = {
-      roomID: this.id,
-      players: [...this.sessions.keys()]
-    }
-
-    this.sessions.forEach((session, playerID) => {
-      session.push('state', { playerID, content })
+  push (topic, data) {
+    this.players.forEach(player => {
+      player.push(topic, data)
     })
+  }
+
+  close () {
+    this.push('end')
+    this.emit('close')
+  }
+
+  toJSON () {
+    return { players: this.players }
   }
 }
 
 module.exports = class Game {
-  constructor () {
+  constructor (discovery, redisClient) {
+    this.redis = redisClient
     this.rooms = new Map()
   }
 
@@ -49,18 +83,22 @@ module.exports = class Game {
     const { roster } = args
 
     const roomID = shortid.generate()
-    const room = new Room(roomID, roster)
+    const room = new Room(roster)
 
     this.rooms.set(roomID, room)
+    room.on('close', () => {
+      this.redis.hdel('room', roomID)
+      this.rooms.delete(roomID)
+    })
 
     return { roomID }
   }
 
   async joinRoom (session, args) {
-    const { playerID, roomID } = args
+    const { playerID, nickname, roomID } = args
 
     const room = this.rooms.get(roomID)
-    room.add(playerID, session)
+    room.add(playerID, nickname, session)
 
     return { roster: room.roster }
   }

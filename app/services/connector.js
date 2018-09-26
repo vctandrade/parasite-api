@@ -26,6 +26,8 @@ module.exports = class Connector {
   async login (session, args) {
     const { token } = args
 
+    if (session.state.playerID !== undefined) throw error.MULTIPLE_LOGINS
+
     const ticket = await this.auth.verifyIdToken({ idToken: token, audience: process.env.CLIENT_ID })
       .catch(reason => {
         throw error.UNAUTHORIZED
@@ -33,14 +35,22 @@ module.exports = class Connector {
 
     const playerID = ticket.getPayload().sub
 
-    this.sessions.set(playerID, session)
-    session.ws.on('close', () => this.sessions.delete(playerID))
+    if (await this.redis.sismember('players', playerID)) throw error.MULTIPLE_LOGINS
+    await this.redis.sadd('players', playerID)
 
-    session.state = {
-      playerID,
-      roomID: null,
-      hostname: null
-    }
+    this.sessions.set(playerID, session)
+    session.ws.on('close', () => {
+      this.logout(session)
+      this.sessions.delete(playerID)
+    })
+
+    session.state.playerID = playerID
+  }
+
+  async logout (session) {
+    await this.leaveRoom(session)
+    await this.redis.srem('players', session.state.playerID)
+    session.state.playerID = undefined
   }
 
   async createRoom (session, args) {
@@ -55,16 +65,17 @@ module.exports = class Connector {
   }
 
   async joinRoom (session, args) {
-    const { roomID } = args
+    const { nickname, roomID } = args
 
     if (session.state.playerID === undefined) throw error.UNAUTHORIZED
+    if (session.state.roomID !== undefined) throw error.MULTIPLE_JOINS
 
     const hostname = await this.redis.hget('room', roomID)
     const channel = this.discovery.get(hostname)
 
     if (hostname === null) throw error.BAD_REQUEST
 
-    const room = await channel.request('joinRoom', { playerID: session.state.playerID, roomID })
+    const room = await channel.request('joinRoom', { playerID: session.state.playerID, nickname, roomID })
 
     session.state.roomID = roomID
     session.state.hostname = hostname
@@ -81,7 +92,7 @@ module.exports = class Connector {
       channel.send('leaveRoom', { playerID: session.state.playerID, roomID: session.state.roomID })
     }
 
-    session.state.roomID = null
-    session.state.hostname = null
+    session.state.roomID = undefined
+    session.state.hostname = undefined
   }
 }

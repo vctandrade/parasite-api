@@ -30,7 +30,12 @@ module.exports = class Server {
 
       body.data = await method.call(this.service, session, args)
         .catch(reason => {
-          body.error = reason instanceof Error ? error.INTERNAL_ERROR : reason
+          body.error = reason
+
+          if (reason instanceof Error) {
+            console.error(reason)
+            body.error = error.INTERNAL_ERROR
+          }
         })
 
       if (id !== null) {
