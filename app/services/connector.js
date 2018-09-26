@@ -13,9 +13,13 @@ module.exports = class Connector {
 
     discovery.on('game', body => {
       const { topic, data } = body
-      const session = this.sessions.get(data.playerID)
 
-      if (session) session.push(topic, data.content)
+      const session = this.sessions.get(data.playerID)
+      session.push(topic, data.content)
+
+      if (topic === 'close') {
+        this.leaveRoom(session)
+      }
     })
   }
 

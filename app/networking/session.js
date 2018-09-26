@@ -1,4 +1,3 @@
-const WebSocket = require('ws')
 
 module.exports = class Session {
   constructor (ws) {
@@ -10,7 +9,6 @@ module.exports = class Session {
     const body = { topic, data }
     const message = JSON.stringify({ id: null, body })
 
-    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(message)
-    else console.error('Push failed')
+    this.ws.send(message)
   }
 }

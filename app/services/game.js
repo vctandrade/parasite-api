@@ -64,7 +64,7 @@ class Room extends EventEmitter {
   }
 
   close () {
-    this.push('end')
+    this.push('close')
     this.emit('close')
   }
 
