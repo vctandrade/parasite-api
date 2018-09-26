@@ -17,7 +17,7 @@ module.exports = class Connector {
       const session = this.sessions.get(data.playerID)
       session.push(topic, data.content)
 
-      if (topic === 'close') {
+      if (topic === 'kick') {
         this.leaveRoom(session)
       }
     })
@@ -82,8 +82,8 @@ module.exports = class Connector {
     const room = await channel.request('joinRoom', { playerID: session.state.playerID, nickname, roomID })
 
     channel.ws.once('close', () => {
-      this.leaveRoom(session)
       session.push('kick')
+      this.leaveRoom(session)
     })
 
     session.state.roomID = roomID
