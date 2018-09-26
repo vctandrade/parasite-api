@@ -49,7 +49,10 @@ Authenticates the player, so they can perform account specific actions.
 
 | | Object | Type | Description |
 | --- | --- | --- | --- |
-| **Request** | playerID | string | unique identification for the player |
+| **Request** | token | string | OAuth2 token provided by Google |
+
+### logout
+Leaves current room and signs out.
 
 ### createRoom
 Creates a new game room with the given roster.
@@ -64,7 +67,7 @@ Adds the player to an existing room.
 
 | | Object | Type | Description |
 | --- | --- | --- | --- |
-| **Request** | roomID | string | unique identification for the room |
+| **Request** | nickname <br/> roomID | string <br/> string | custom public user name <br/> unique identification for the room |
 | **Response** | roster | string array | jobs allowed in the game |
 
 ### leaveRoom
@@ -76,5 +79,4 @@ Gives an update on the room state.
 
 | Object | Type | Description |
 | --- | --- | --- |
-| roomID | string | unique identification for the room |
 | players | string array | players in the game |
