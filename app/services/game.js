@@ -34,9 +34,12 @@ class Room extends EventEmitter {
 
     this.players = []
     this.timer = null
+
+    this.state = 'waiting' // TODO: actual state behaviours
   }
 
   add (playerID, nickname, session) {
+    if (this.state !== 'waiting') throw error.ROOM_FULL
     if (this.timer !== null) throw error.ROOM_FULL
 
     const player = new Player(playerID, nickname, session)
@@ -45,8 +48,17 @@ class Room extends EventEmitter {
     this.push('state', this)
 
     if (this.players.length === this.roster.length) {
-      this.timer = setTimeout(() => this.close(), 10000)
+      this.timer = setTimeout(() => this.begin(), 10000)
     }
+  }
+
+  begin () {
+    _.zipWith(this.players, _.shuffle(this.roster), (player, job) => {
+      player.push('start', { job })
+    })
+
+    this.state = 'started'
+    setTimeout(() => this.close(), 10000)
   }
 
   remove (playerID) {
