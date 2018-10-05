@@ -1,12 +1,13 @@
 const error = require('../shared/error')
+const route = require('koa-route')
 
 const { OAuth2Client } = require('google-auth-library')
 const { version } = require('../package.json')
 
 module.exports = class Connector {
-  constructor (discovery, redisClient) {
+  constructor (discovery, redis, koa) {
     this.discovery = discovery
-    this.redis = redisClient
+    this.redis = redis
 
     this.auth = new OAuth2Client()
     this.sessions = new Map()
@@ -21,6 +22,12 @@ module.exports = class Connector {
         this.leaveRoom(session)
       }
     })
+
+    function deeplink (ctx, id) {
+      ctx.redirect('parasite-app://invite?id=' + id)
+    }
+
+    koa.use(route.get('/room/:id', deeplink))
   }
 
   async info () {

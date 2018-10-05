@@ -1,7 +1,7 @@
 const _ = require('lodash')
 
-const jobs = require('../shared/jobs')
 const error = require('../shared/error')
+const jobs = require('../shared/jobs')
 const shortid = require('shortid')
 
 const EventEmitter = require('events')
@@ -86,13 +86,15 @@ class Room extends EventEmitter {
 }
 
 module.exports = class Game {
-  constructor (discovery, redisClient) {
-    this.redis = redisClient
+  constructor (discovery, redis, koa) {
+    this.redis = redis
     this.rooms = new Map()
   }
 
   async createRoom (session, args) {
     const { roster } = args
+
+    if (roster.length < 2) throw error.BAD_REQUEST
 
     const roomID = shortid.generate()
     const room = new Room(roster)

@@ -2,13 +2,14 @@ require('dotenv').config()
 
 const config = require('config')
 const exitHook = require('exit-hook')
-const redis = require('async-redis')
 const services = require('./services')
 const program = require('commander')
 
 const Discovery = require('./networking/discovery')
+const Koa = require('koa')
 const Server = require('./networking/server')
 
+const { createClient } = require('async-redis')
 const { version } = require('./package.json')
 
 program
@@ -23,14 +24,15 @@ program
       return
     }
 
-    const redisClient = redis.createClient(config.get('Redis'))
+    const redis = createClient(config.get('Redis'))
+    const koa = new Koa()
 
-    const discovery = new Discovery(id, redisClient)
-    const service = new Service(discovery, redisClient)
-    const server = new Server(service)
+    const discovery = new Discovery(id, redis)
+    const service = new Service(discovery, redis, koa)
+    const server = new Server(service, koa)
 
     exitHook(() => {
-      redisClient.quit()
+      redis.quit()
       discovery.stop()
       server.close()
     })
