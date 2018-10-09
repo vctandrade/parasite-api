@@ -104,9 +104,7 @@ module.exports = class Connector {
 
     const channel = this.discovery.get(session.state.hostname)
 
-    if (channel !== undefined) {
-      channel.send('leaveRoom', { playerID: session.state.playerID, roomID: session.state.roomID })
-    }
+    if (channel !== undefined) channel.send('leaveRoom', { playerID: session.state.playerID, roomID: session.state.roomID })
 
     session.state.roomID = undefined
     session.state.hostname = undefined

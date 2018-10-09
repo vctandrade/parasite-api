@@ -7,14 +7,20 @@ const shortid = require('shortid')
 const EventEmitter = require('events')
 
 class Player {
-  constructor (id, nickname, session) {
+  constructor (id, nickname) {
     this.id = id
     this.nickname = nickname
-    this.session = session
+
+    this.session = null
+    this.job = null
+  }
+
+  isConnected () {
+    return this.session !== null
   }
 
   push (topic, data) {
-    this.session.push(topic, { playerID: this.id, content: data })
+    if (this.isConnected()) this.session.push(topic, { playerID: this.id, content: data })
   }
 
   toJSON () {
@@ -22,57 +28,82 @@ class Player {
   }
 }
 
+class Lobby {
+  constructor (room, roster) {
+    this.room = room
+    this.roster = roster
+
+    this.startTime = null
+    this.timer = null
+  }
+
+  isFull () {
+    return this.room.players.length === this.roster.length
+  }
+
+  join (player, session) {
+    if (this.isFull()) throw error.ROOM_FULL
+
+    this.room.players.push(player)
+
+    if (this.isFull()) {
+      this.timer = setTimeout(() => this.begin(), 15000)
+      this.startTime = Date.now() + 15000
+    }
+
+    this.room.push('state', this)
+    player.session = session
+
+    return { roster: this.roster, state: this }
+  }
+
+  leave (playerID) {
+    _.remove(this.room.players, player => player.id === playerID)
+
+    clearTimeout(this.timer)
+    this.timer = null
+    this.startTime = null
+
+    this.room.push('state', this)
+  }
+
+  begin () {
+    _.zipWith(this.room.players, _.shuffle(this.roster), (player, job) => {
+      player.job = job
+      player.push('start', { job })
+    })
+
+    setTimeout(() => this.room.close(), 10000)
+  }
+
+  toJSON () {
+    return {
+      players: this.room.players,
+      startTime: this.startTime
+    }
+  }
+}
+
 class Room extends EventEmitter {
   constructor (roster) {
     super()
 
-    this.roster = _.map(roster, jobID => {
+    roster = _.map(roster, jobID => {
       const Job = jobs[jobID]
       if (Job === undefined) throw error.BAD_REQUEST
       return new Job()
     })
 
+    this.state = new Lobby(this, roster)
     this.players = []
-    this.timer = null
-
-    this.state = 'waiting' // TODO: actual state behaviours
   }
 
-  add (playerID, nickname, session) {
-    if (this.state !== 'waiting') throw error.ROOM_FULL
-    if (this.timer !== null) throw error.ROOM_FULL
-
-    const player = new Player(playerID, nickname, session)
-
-    this.players.push(player)
-    this.push('state', this)
-
-    if (this.players.length === this.roster.length) {
-      this.timer = setTimeout(() => this.begin(), 10000)
-    }
+  join (player, session) {
+    return this.state.join(player, session)
   }
 
-  begin () {
-    _.zipWith(this.players, _.shuffle(this.roster), (player, job) => {
-      player.push('start', { job })
-    })
-
-    this.state = 'started'
-    setTimeout(() => this.close(), 10000)
-  }
-
-  remove (playerID) {
-    _.remove(this.players, player => player.id === playerID)
-    this.push('state', this)
-
-    clearTimeout(this.timer)
-    this.timer = null
-  }
-
-  push (topic, data) {
-    this.players.forEach(player => {
-      player.push(topic, data)
-    })
+  leave (playerID) {
+    return this.state.leave(playerID)
   }
 
   close () {
@@ -80,8 +111,8 @@ class Room extends EventEmitter {
     this.emit('close')
   }
 
-  toJSON () {
-    return { players: this.players }
+  push (topic, data) {
+    this.players.forEach(player => player.push(topic, data))
   }
 }
 
@@ -100,7 +131,8 @@ module.exports = class Game {
     const room = new Room(roster)
 
     this.rooms.set(roomID, room)
-    room.on('close', () => {
+
+    room.once('close', () => {
       this.redis.hdel('room', roomID)
       this.rooms.delete(roomID)
     })
@@ -111,18 +143,22 @@ module.exports = class Game {
   async joinRoom (session, args) {
     const { playerID, nickname, roomID } = args
 
+    const player = new Player(playerID, nickname)
     const room = this.rooms.get(roomID)
 
-    room.add(playerID, nickname, session)
-    session.ws.on('close', () => this.leaveRoom(playerID))
+    if (room === undefined) throw error.BAD_REQUEST
 
-    return { roster: room.roster }
+    session.ws.once('close', () => this.leaveRoom(playerID))
+
+    return room.join(player, session)
   }
 
   async leaveRoom (session, args) {
     const { playerID, roomID } = args
 
     const room = this.rooms.get(roomID)
-    if (room !== undefined) room.remove(playerID)
+    if (room === undefined) return
+
+    return room.leave(playerID)
   }
 }

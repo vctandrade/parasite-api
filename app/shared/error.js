@@ -4,7 +4,7 @@ function build (code, message) {
 }
 
 module.exports = {
-  INTERNAL_ERROR: build(1, 'Internal error'),
+  INTERNAL: build(1, 'Internal error'),
   UNAUTHORIZED: build(2, 'Client unauthorized'),
   BAD_REQUEST: build(3, 'Request invalid'),
 
