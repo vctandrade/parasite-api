@@ -8,7 +8,7 @@ module.exports = {
   UNAUTHORIZED: build(2, 'Client unauthorized'),
   BAD_REQUEST: build(3, 'Request invalid'),
 
-  ROOM_FULL: build(4, 'Room full'),
-  MULTIPLE_JOINS: build(5, 'Already in a room'),
+  GAME_FULL: build(4, 'Game full'),
+  MULTIPLE_JOINS: build(5, 'Already in a game'),
   MULTIPLE_LOGINS: build(6, 'Already logged in')
 }

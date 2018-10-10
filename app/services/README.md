@@ -52,30 +52,30 @@ Authenticates the player, so they can perform account specific actions.
 | **Request** | token | string | OAuth2 token provided by Google |
 
 ### logout
-Leaves current room and signs out.
+Leaves current game and signs out.
 
-### createRoom
-Creates a new game room with the given roster.
+### createGame
+Creates a new game with the given roster.
 
 | | Object | Type | Description |
 | --- | --- | --- | --- |
 | **Request** | roster | string array | jobs allowed in the game |
-| **Response** | roomID | string | unique identification for the room |
+| **Response** | gameID | string | unique identification for the game |
 
-### joinRoom
-Adds the player to an existing room.
+### joinGame
+Adds the player to an existing game.
 
 | | Object | Type | Description |
 | --- | --- | --- | --- |
-| **Request** | nickname <br/> roomID | string <br/> string | custom public user name <br/> unique identification for the room |
+| **Request** | nickname <br/> gameID | string <br/> string | custom public user name <br/> unique identification for the game |
 | **Response** | roster | string array | jobs allowed in the game |
 
-### leaveRoom
-Removes the player from the room they are currently in.
+### leaveGame
+Removes the player from the game they are currently in.
 
 ## Push Topics
 ### state
-Gives an update on the room state.
+Gives an update on the game state.
 
 | Object | Type | Description |
 | --- | --- | --- |

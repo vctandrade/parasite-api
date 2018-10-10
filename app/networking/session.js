@@ -2,7 +2,17 @@
 module.exports = class Session {
   constructor (ws) {
     this.ws = ws
-    this.state = {}
+
+    this.playerID = null
+    this.gameID = null
+    this.hostname = null
+
+    this.disconnector = () => {
+      this.push('kick')
+
+      this.gameID = null
+      this.hostname = null
+    }
   }
 
   async push (topic, data) {

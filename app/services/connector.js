@@ -4,7 +4,7 @@ const route = require('koa-route')
 const { OAuth2Client } = require('google-auth-library')
 const { version } = require('../package.json')
 
-module.exports = class Connector {
+module.exports = class {
   constructor (discovery, redis, koa) {
     this.discovery = discovery
     this.redis = redis
@@ -19,7 +19,7 @@ module.exports = class Connector {
       session.push(topic, data.content)
 
       if (topic === 'kick') {
-        this.leaveRoom(session)
+        this.leaveGame(session)
       }
     })
 
@@ -27,7 +27,7 @@ module.exports = class Connector {
       ctx.redirect('parasite-app://invite?id=' + id)
     }
 
-    koa.use(route.get('/room/:id', deeplink))
+    koa.use(route.get('/game/:id', deeplink))
   }
 
   async info () {
@@ -37,7 +37,7 @@ module.exports = class Connector {
   async login (session, args) {
     const { token } = args
 
-    if (session.state.playerID !== undefined) throw error.MULTIPLE_LOGINS
+    if (session.playerID !== null) throw error.MULTIPLE_LOGINS
 
     const ticket = await this.auth.verifyIdToken({ idToken: token, audience: process.env.CLIENT_ID })
       .catch(reason => {
@@ -55,58 +55,58 @@ module.exports = class Connector {
       this.sessions.delete(playerID)
     })
 
-    session.state.playerID = playerID
+    session.playerID = playerID
   }
 
   async logout (session) {
-    await this.leaveRoom(session)
-    await this.redis.srem('players', session.state.playerID)
-    session.state.playerID = undefined
+    await this.leaveGame(session)
+    await this.redis.srem('players', session.playerID)
+    session.playerID = null
   }
 
-  async createRoom (session, args) {
-    if (session.state.playerID === undefined) throw error.UNAUTHORIZED
+  async createGame (session, args) {
+    if (session.playerID === null) throw error.UNAUTHORIZED
 
     const channel = this.discovery.getAny('game')
-    const response = await channel.request('createRoom', args)
+    const response = await channel.request('createGame', args)
 
-    await this.redis.hset('room', response.roomID, channel.hostname)
+    await this.redis.hset('game', response.gameID, channel.hostname)
 
-    return { roomID: response.roomID }
+    return { gameID: response.gameID }
   }
 
-  async joinRoom (session, args) {
-    const { nickname, roomID } = args
+  async joinGame (session, args) {
+    const { nickname, gameID } = args
 
-    if (session.state.playerID === undefined) throw error.UNAUTHORIZED
-    if (session.state.roomID !== undefined) throw error.MULTIPLE_JOINS
+    if (session.playerID === null) throw error.UNAUTHORIZED
+    if (session.gameID !== null) throw error.MULTIPLE_JOINS
 
-    const hostname = await this.redis.hget('room', roomID)
+    const hostname = await this.redis.hget('game', gameID)
     const channel = this.discovery.get(hostname)
 
     if (hostname === null) throw error.BAD_REQUEST
 
-    const room = await channel.request('joinRoom', { playerID: session.state.playerID, nickname, roomID })
+    const game = await channel.request('joinGame', { playerID: session.playerID, nickname, gameID })
 
-    channel.ws.once('close', () => {
-      session.push('kick')
-      this.leaveRoom(session)
-    })
+    channel.ws.once('close', session.disconnector)
 
-    session.state.roomID = roomID
-    session.state.hostname = hostname
+    session.gameID = gameID
+    session.hostname = hostname
 
-    return { room }
+    return game
   }
 
-  async leaveRoom (session) {
-    if (session.state.playerID === undefined) throw error.UNAUTHORIZED
+  async leaveGame (session) {
+    if (session.playerID === null) throw error.UNAUTHORIZED
 
-    const channel = this.discovery.get(session.state.hostname)
+    const channel = this.discovery.get(session.hostname)
 
-    if (channel !== undefined) channel.send('leaveRoom', { playerID: session.state.playerID, roomID: session.state.roomID })
+    if (channel) {
+      channel.send('leaveGame', { playerID: session.playerID, gameID: session.gameID })
+      channel.ws.off('close', session.disconnector)
+    }
 
-    session.state.roomID = undefined
-    session.state.hostname = undefined
+    session.gameID = null
+    session.hostname = null
   }
 }
