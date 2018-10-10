@@ -8,11 +8,11 @@ const shortid = require('shortid')
 const EventEmitter = require('events')
 
 class Player {
-  constructor (id, nickname) {
+  constructor (id, nickname, session) {
     this.id = id
     this.nickname = nickname
+    this.session = session
 
-    this.session = null
     this.job = null
     this.location = null
 
@@ -37,16 +37,25 @@ class Morning {
     this.base = base
     this.resources = resources
 
+    this.actions = {
+      move: (player, params) => {
+        const location = this.base[params.location]
+
+        if (location === undefined) throw error.BAD_REQUEST
+
+        player.location = location
+        this.game.push(player.id)
+
+        return { state: this.view(player) }
+      }
+    }
+
     game.players.forEach(player => {
       player.location = base.dormitory
     })
-
-    game.players.forEach(player => {
-      player.push('state', this.state(player))
-    })
   }
 
-  state (player) {
+  view (player) {
     return {
       name: 'morning',
       info: {
@@ -55,7 +64,7 @@ class Morning {
           individual: player.resources
         },
         location: player.location,
-        players: _.filter(this.game.players, { location: player.location }),
+        players: _.filter(this.game.players, other => other.location === player.location),
         job: player.job
       }
     }
@@ -68,7 +77,7 @@ class Morning {
 
     player.session = session
 
-    return { state: this.state(player) }
+    return { state: this.view(player) }
   }
 
   leave (playerID) {
@@ -84,16 +93,24 @@ class Lobby {
 
     this.startTime = null
     this.timer = null
+
+    this.actions = {}
   }
 
-  isFull () {
-    return this.game.players.length === this.roster.length
+  view (player) {
+    return {
+      name: 'lobby',
+      info: {
+        players: this.game.players,
+        startTime: this.startTime
+      }
+    }
   }
 
   join (playerID, nickname, session) {
     if (this.isFull()) throw error.GAME_FULL
 
-    const player = new Player(playerID, nickname) // TODO
+    const player = new Player(playerID, nickname, session)
     this.game.players.push(player)
 
     if (this.isFull()) {
@@ -101,10 +118,9 @@ class Lobby {
       this.startTime = Date.now() + 15000
     }
 
-    this.game.push('state', this)
-    player.session = session
+    this.game.push(playerID)
 
-    return { roster: this.roster, state: this }
+    return { roster: this.roster, state: this.view(player) }
   }
 
   leave (playerID) {
@@ -114,7 +130,7 @@ class Lobby {
     this.timer = null
     this.startTime = null
 
-    this.game.push('state', this)
+    this.game.push(playerID)
   }
 
   begin () {
@@ -130,16 +146,11 @@ class Lobby {
     }
 
     this.game.state = new Morning(this.game, base, resources)
+    this.game.push()
   }
 
-  toJSON () {
-    return {
-      name: 'lobby',
-      info: {
-        players: this.game.players,
-        startTime: this.startTime
-      }
-    }
+  isFull () {
+    return this.game.players.length === this.roster.length
   }
 }
 
@@ -165,13 +176,24 @@ class Game extends EventEmitter {
     return this.state.leave(playerID)
   }
 
+  execute (playerID, action, params) {
+    const player = _.find(this.players, { id: playerID })
+    const method = this.state.actions[action]
+
+    if (method === undefined) throw error.BAD_REQUEST
+
+    return method(player, params)
+  }
+
   close () {
     this.push('kick')
     this.emit('close')
   }
 
-  push (topic, data) {
-    this.players.forEach(player => player.push(topic, data))
+  push (playerID) {
+    this.players.forEach(player => {
+      if (player.id !== playerID) player.push('state', this.state.view(player))
+    })
   }
 }
 
@@ -203,9 +225,6 @@ module.exports = class {
     const { playerID, nickname, gameID } = args
 
     const game = this.games.get(gameID)
-
-    if (game === undefined) throw error.BAD_REQUEST
-
     session.ws.once('close', () => game.leave(playerID))
 
     return game.join(playerID, nickname, session)
@@ -215,8 +234,13 @@ module.exports = class {
     const { playerID, gameID } = args
 
     const game = this.games.get(gameID)
-    if (game === undefined) return
-
     return game.leave(playerID)
+  }
+
+  async execute (session, args) {
+    const { playerID, gameID, action, params } = args
+
+    const game = this.games.get(gameID)
+    return game.execute(playerID, action, params)
   }
 }

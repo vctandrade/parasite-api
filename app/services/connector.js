@@ -109,4 +109,15 @@ module.exports = class {
     session.gameID = null
     session.hostname = null
   }
+
+  async execute (session, args) {
+    const { action, params } = args
+
+    if (session.playerID === null) throw error.UNAUTHORIZED
+    if (session.gameID === null) throw error.NOT_IN_GAME
+
+    const channel = this.discovery.get(session.hostname)
+
+    return channel.request('execute', { playerID: session.playerID, gameID: session.gameID, action, params })
+  }
 }

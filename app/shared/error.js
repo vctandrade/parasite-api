@@ -1,14 +1,16 @@
 
-function build (code, message) {
+function create (code, message) {
   return { code, message }
 }
 
 module.exports = {
-  INTERNAL: build(1, 'Internal error'),
-  UNAUTHORIZED: build(2, 'Client unauthorized'),
-  BAD_REQUEST: build(3, 'Request invalid'),
+  INTERNAL: create(1, 'Internal error'),
+  UNAUTHORIZED: create(2, 'Client unauthorized'),
+  BAD_REQUEST: create(3, 'Request invalid'),
 
-  GAME_FULL: build(4, 'Game full'),
-  MULTIPLE_JOINS: build(5, 'Already in a game'),
-  MULTIPLE_LOGINS: build(6, 'Already logged in')
+  GAME_FULL: create(4, 'Game full'),
+  NOT_IN_GAME: create(7, 'Client hasn\'t joined any game yet'),
+
+  MULTIPLE_JOINS: create(5, 'Already in a game'),
+  MULTIPLE_LOGINS: create(6, 'Already logged in')
 }

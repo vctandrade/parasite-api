@@ -5,10 +5,17 @@ class Dormitory {
   }
 }
 
+class Kitchen {
+  toJSON () {
+    return 'kitchen'
+  }
+}
+
 module.exports = {
   createBase: function () {
     return {
-      dormitory: new Dormitory()
+      dormitory: new Dormitory(),
+      kitchen: new Kitchen()
     }
   }
 }
