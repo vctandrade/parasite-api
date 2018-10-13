@@ -8,9 +8,9 @@ const shortid = require('shortid')
 const EventEmitter = require('events')
 
 class Player {
-  constructor (id, nickname, session) {
+  constructor (id, name, session) {
     this.id = id
-    this.nickname = nickname
+    this.name = name
     this.session = session
 
     this.job = null
@@ -27,7 +27,7 @@ class Player {
   }
 
   toJSON () {
-    return this.nickname
+    return this.name
   }
 }
 
@@ -70,7 +70,7 @@ class Morning {
     }
   }
 
-  join (playerID, nickname, session) {
+  join (playerID, playerName, session) {
     const player = _.find(this.game.players, { id: playerID })
 
     if (player === undefined) throw error.GAME_FULL
@@ -107,10 +107,10 @@ class Lobby {
     }
   }
 
-  join (playerID, nickname, session) {
+  join (playerID, playerName, session) {
     if (this.isFull()) throw error.GAME_FULL
 
-    const player = new Player(playerID, nickname, session)
+    const player = new Player(playerID, playerName, session)
     this.game.players.push(player)
 
     if (this.isFull()) {
@@ -168,8 +168,8 @@ class Game extends EventEmitter {
     this.players = []
   }
 
-  join (playerID, nickname, session) {
-    return this.state.join(playerID, nickname, session)
+  join (playerID, playerName, session) {
+    return this.state.join(playerID, playerName, session)
   }
 
   leave (playerID) {
@@ -198,7 +198,9 @@ class Game extends EventEmitter {
 }
 
 module.exports = class {
-  constructor (discovery, redis, koa) {
+  constructor (modules) {
+    const { redis } = modules
+
     this.redis = redis
     this.games = new Map()
   }
@@ -222,12 +224,12 @@ module.exports = class {
   }
 
   async joinGame (session, args) {
-    const { playerID, nickname, gameID } = args
+    const { playerID, playerName, gameID } = args
 
     const game = this.games.get(gameID)
     session.ws.once('close', () => game.leave(playerID))
 
-    return game.join(playerID, nickname, session)
+    return game.join(playerID, playerName, session)
   }
 
   async leaveGame (session, args) {

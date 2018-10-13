@@ -3,7 +3,7 @@ module.exports = class Session {
   constructor (ws) {
     this.ws = ws
 
-    this.playerID = null
+    this.player = null
     this.gameID = null
     this.hostname = null
 

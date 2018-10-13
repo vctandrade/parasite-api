@@ -4,21 +4,22 @@ services:
     image: parasite-api
     command: connector
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
     ports:
       - 5000:80
     deploy:
       replicas: 2
-    depends_on:
-      - redis
   game:
     image: parasite-api
     command: game
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
     deploy:
       replicas: 2
-    depends_on:
-      - redis
   redis:
     image: redis:alpine
+  mariadb:
+    image: mariadb:10
+    environment:
+      - MYSQL_DATABASE=parasite
+      - MYSQL_ROOT_PASSWORD=password

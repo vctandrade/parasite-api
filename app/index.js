@@ -1,22 +1,24 @@
 require('dotenv').config()
 
 const config = require('config')
+const database = require('./shared/database')
 const exitHook = require('exit-hook')
+const redis = require('async-redis')
 const services = require('./services')
 const program = require('commander')
 
 const Discovery = require('./networking/discovery')
 const Koa = require('koa')
+const Sequelize = require('sequelize')
 const Server = require('./networking/server')
 
-const { createClient } = require('async-redis')
 const { version } = require('./package.json')
 
 program
   .version(version)
   .description('starts one of the Parasite game servers')
   .arguments('<service>')
-  .action(function (id) {
+  .action(async id => {
     const Service = services[id]
 
     if (Service === undefined) {
@@ -24,17 +26,22 @@ program
       return
     }
 
-    const redis = createClient(config.get('Redis'))
-    const koa = new Koa()
+    const modules = {}
+    const sequelize = new Sequelize(config.get('Sequelize'))
 
-    const discovery = new Discovery(id, redis)
-    const service = new Service(discovery, redis, koa)
-    const server = new Server(service, koa)
+    modules.koa = new Koa()
+    modules.redis = redis.createClient(config.get('Redis'))
+    modules.database = await database.init(sequelize)
+    modules.discovery = new Discovery(id, modules.redis)
+
+    const service = new Service(modules)
+    const server = new Server(service, modules.koa)
 
     exitHook(() => {
-      redis.quit()
-      discovery.stop()
       server.close()
+      modules.discovery.stop()
+      modules.redis.quit()
+      sequelize.close()
     })
   })
 

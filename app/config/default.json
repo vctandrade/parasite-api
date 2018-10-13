@@ -10,5 +10,14 @@
     "port": 80,
     "timeout": 2000,
     "checkInterval": 10000
+  },
+  "Sequelize": {
+    "host": "mariadb",
+    "port": 3306,
+    "username": "root",
+    "password": "password",
+    "database": "parasite",
+    "dialect": "mysql",
+    "logging": false
   }
 }

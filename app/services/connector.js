@@ -1,3 +1,5 @@
+const _ = require('lodash')
+
 const error = require('../shared/error')
 const route = require('koa-route')
 
@@ -5,8 +7,11 @@ const { OAuth2Client } = require('google-auth-library')
 const { version } = require('../package.json')
 
 module.exports = class {
-  constructor (discovery, redis, koa) {
+  constructor (modules) {
+    const { discovery, database, redis, koa } = modules
+
     this.discovery = discovery
+    this.database = database
     this.redis = redis
 
     this.auth = new OAuth2Client()
@@ -37,35 +42,64 @@ module.exports = class {
   async login (session, args) {
     const { token } = args
 
-    if (session.playerID !== null) throw error.MULTIPLE_LOGINS
+    if (session.player !== null) throw error.MULTIPLE_LOGINS
 
     const ticket = await this.auth.verifyIdToken({ idToken: token, audience: process.env.CLIENT_ID })
       .catch(reason => {
         throw error.UNAUTHORIZED
       })
 
-    const playerID = ticket.getPayload().sub
+    const payload = ticket.getPayload()
+    const player = await this.database.Player
+      .findOrCreate({
+        where: {
+          id: payload.sub
+        },
+        defaults: {
+          name: payload.given_name
+        }
+      })
+      .spread((player, created) => player)
 
-    if (await this.redis.sismember('players', playerID)) throw error.MULTIPLE_LOGINS
-    await this.redis.sadd('players', playerID)
+    if (await this.redis.sadd('players', player.id) === 0) throw error.MULTIPLE_LOGINS
 
-    this.sessions.set(playerID, session)
+    session.player = player
+    this.sessions.set(player.id, session)
+
     session.ws.on('close', () => {
       this.logout(session)
-      this.sessions.delete(playerID)
+      this.sessions.delete(player.id)
     })
 
-    session.playerID = playerID
+    return {
+      name: session.player.name
+    }
   }
 
   async logout (session) {
     await this.leaveGame(session)
-    await this.redis.srem('players', session.playerID)
-    session.playerID = null
+    await this.redis.srem('players', session.player.id)
+    session.player = null
+  }
+
+  async updateAccount (session, args) {
+    if (session.player === null) throw error.UNAUTHORIZED
+
+    args = _.omit(args, 'id')
+
+    await session.player.update(args)
+      .catch(async reason => {
+        await session.player.reload()
+        throw error.BAD_REQUEST
+      })
+
+    return {
+      name: session.player.name
+    }
   }
 
   async createGame (session, args) {
-    if (session.playerID === null) throw error.UNAUTHORIZED
+    if (session.player === null) throw error.UNAUTHORIZED
 
     const channel = this.discovery.getAny('game')
     const response = await channel.request('createGame', args)
@@ -76,9 +110,9 @@ module.exports = class {
   }
 
   async joinGame (session, args) {
-    const { nickname, gameID } = args
+    const { gameID } = args
 
-    if (session.playerID === null) throw error.UNAUTHORIZED
+    if (session.player === null) throw error.UNAUTHORIZED
     if (session.gameID !== null) throw error.MULTIPLE_JOINS
 
     const hostname = await this.redis.hget('game', gameID)
@@ -86,7 +120,7 @@ module.exports = class {
 
     if (hostname === null) throw error.BAD_REQUEST
 
-    const game = await channel.request('joinGame', { playerID: session.playerID, nickname, gameID })
+    const game = await channel.request('joinGame', { playerID: session.player.id, playerName: session.player.name, gameID })
 
     channel.ws.once('close', session.disconnector)
 
@@ -97,12 +131,12 @@ module.exports = class {
   }
 
   async leaveGame (session) {
-    if (session.playerID === null) throw error.UNAUTHORIZED
+    if (session.player === null) throw error.UNAUTHORIZED
 
     const channel = this.discovery.get(session.hostname)
 
     if (channel) {
-      channel.send('leaveGame', { playerID: session.playerID, gameID: session.gameID })
+      channel.send('leaveGame', { playerID: session.player.id, gameID: session.gameID })
       channel.ws.off('close', session.disconnector)
     }
 
@@ -113,11 +147,11 @@ module.exports = class {
   async execute (session, args) {
     const { action, params } = args
 
-    if (session.playerID === null) throw error.UNAUTHORIZED
+    if (session.player === null) throw error.UNAUTHORIZED
     if (session.gameID === null) throw error.NOT_IN_GAME
 
     const channel = this.discovery.get(session.hostname)
 
-    return channel.request('execute', { playerID: session.playerID, gameID: session.gameID, action, params })
+    return channel.request('execute', { playerID: session.player.id, gameID: session.gameID, action, params })
   }
 }
