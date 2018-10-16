@@ -9,9 +9,7 @@ module.exports = class Server {
   constructor (service, koa) {
     this.service = service
 
-    this.http = http
-      .createServer(koa.callback())
-      .listen(config.get('WebSocket.port'))
+    this.http = http.createServer(koa.callback())
 
     this.http.on('upgrade', (request, socket, head) => {
       this.wss.handleUpgrade(request, socket, head, ws => this.wss.emit('connection', ws, request))
@@ -27,8 +25,6 @@ module.exports = class Server {
       ws.on('message', data => this.handle(session, data))
       ws.on('pong', () => { ws.isAlive = true })
     })
-
-    this.interval = setInterval(() => this.healthcheck(), config.get('WebSocket.checkInterval'))
   }
 
   async handle (session, data) {
@@ -66,6 +62,11 @@ module.exports = class Server {
         ws.ping()
       }
     })
+  }
+
+  start () {
+    this.http.listen(config.get('WebSocket.port'))
+    this.interval = setInterval(() => this.healthcheck(), config.get('WebSocket.checkInterval'))
   }
 
   close () {

@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize')
 
 module.exports = {
-  init: async function (sequelize) {
+  create: async function (sequelize) {
     const Player = sequelize.define('player', {
       id: {
         type: Sequelize.UUID,
@@ -16,7 +16,6 @@ module.exports = {
       }
     })
 
-    await sequelize.sync()
     return { Player }
   }
 }

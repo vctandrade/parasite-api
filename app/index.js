@@ -31,7 +31,7 @@ program
 
     modules.koa = new Koa()
     modules.redis = redis.createClient(config.get('Redis'))
-    modules.database = await database.init(sequelize)
+    modules.database = database.create(sequelize)
     modules.discovery = new Discovery(id, modules.redis)
 
     const service = new Service(modules)
@@ -43,6 +43,11 @@ program
       modules.redis.quit()
       sequelize.close()
     })
+
+    await sequelize.authenticate()
+    await sequelize.sync()
+
+    server.start()
   })
 
 program
