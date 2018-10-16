@@ -2,6 +2,7 @@ const _ = require('lodash')
 
 const error = require('../shared/error')
 const route = require('koa-route')
+const uuid = require('uuid/v4')
 
 const { OAuth2Client } = require('google-auth-library')
 const { version } = require('../package.json')
@@ -39,10 +40,8 @@ module.exports = class {
     return { version }
   }
 
-  async login (session, args) {
+  async oauth (session, args) {
     const { token } = args
-
-    if (session.player !== null) throw error.MULTIPLE_LOGINS
 
     const ticket = await this.auth.verifyIdToken({ idToken: token, audience: process.env.CLIENT_ID })
       .catch(reason => {
@@ -61,6 +60,22 @@ module.exports = class {
       })
       .spread((player, created) => player)
 
+    player.token = uuid()
+    await player.save()
+
+    return {
+      token: player.token
+    }
+  }
+
+  async login (session, args) {
+    const { token } = args
+
+    if (session.player !== null) throw error.MULTIPLE_LOGINS
+
+    const player = await this.database.Player.findOne({ where: { token } })
+
+    if (player === null) throw error.UNAUTHORIZED
     if (await this.redis.sadd('players', player.id) === 0) throw error.MULTIPLE_LOGINS
 
     session.player = player

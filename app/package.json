@@ -1,6 +1,6 @@
 {
   "name": "parasite-api",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "The backend of Parasite: the Game",
   "scripts": {
     "test": "eslint .",
@@ -30,6 +30,7 @@
     "mysql2": "^1.6.1",
     "sequelize": "^4.39.0",
     "shortid": "^2.2.13",
+    "uuid": "^3.3.2",
     "ws": "^6.0.0"
   },
   "devDependencies": {

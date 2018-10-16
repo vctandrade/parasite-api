@@ -1,10 +1,10 @@
 const Sequelize = require('sequelize')
 
 module.exports = {
-  create: async function (sequelize) {
+  create: function (sequelize) {
     const Player = sequelize.define('player', {
       id: {
-        type: Sequelize.UUID,
+        type: Sequelize.STRING,
         primaryKey: true
       },
       name: {
@@ -13,6 +13,10 @@ module.exports = {
         validate: {
           notEmpty: true
         }
+      },
+      token: {
+        type: Sequelize.UUID,
+        unique: true
       }
     })
 
