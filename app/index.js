@@ -14,6 +14,11 @@ const Server = require('./networking/server')
 
 const { version } = require('./package.json')
 
+function abort (err) {
+  console.error(`${err.name}: ${err.message}`)
+  process.exit(1)
+}
+
 program
   .version(version)
   .description('starts one of the Parasite game servers')
@@ -44,8 +49,9 @@ program
       sequelize.close()
     })
 
-    await sequelize.authenticate()
+    modules.redis.on('error', abort)
     await sequelize.sync()
+      .catch(abort)
 
     server.start()
   })

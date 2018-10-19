@@ -20,6 +20,7 @@ module.exports = class Channel extends EventEmitter {
     this.ws.on('message', data => this.handle(data))
     this.ws.on('ping', () => { this.isAlive = true })
     this.ws.on('close', () => this.close())
+    this.ws.on('error', err => console.error('Error:', this.toString(), err.message))
 
     this.interval = setInterval(() => this.healthcheck(), config.get('WebSocket.checkInterval'))
   }
@@ -67,5 +68,9 @@ module.exports = class Channel extends EventEmitter {
     clearInterval(this.interval)
     this.ws.close()
     this.emit('close')
+  }
+
+  toString () {
+    return `Channel{service="${this.service}" host="${this.host}"}`
   }
 }
