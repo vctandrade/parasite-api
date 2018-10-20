@@ -13,6 +13,8 @@ class Player {
     this.name = name
     this.session = session
 
+    this.canAct = false
+
     this.job = null
     this.location = null
 
@@ -31,41 +33,27 @@ class Player {
   }
 }
 
-class Morning {
-  constructor (game, base, resources) {
+class AbstractPhase {
+  constructor (name, game) {
+    this.name = name
     this.game = game
-    this.base = base
-    this.resources = resources
-
-    this.actions = {
-      move: (player, params) => {
-        const location = this.base[params.location]
-
-        if (location === undefined) throw error.BAD_REQUEST
-
-        player.location = location
-        this.game.push(player.id)
-
-        return { state: this.view(player) }
-      }
-    }
-
-    game.players.forEach(player => {
-      player.location = base.dormitory
-    })
   }
 
   view (player) {
     return {
-      name: 'morning',
+      phase: this.name,
       info: {
-        resources: {
-          shared: this.resources,
-          individual: player.resources
+        player: {
+          name: player.name,
+          job: player.job,
+          resources: player.resources,
+          canAct: player.canAct
         },
-        location: player.location,
-        players: _.filter(this.game.players, other => other.location === player.location),
-        job: player.job
+        location: {
+          name: player.location,
+          players: _.filter(this.game.players, other => other.location === player.location)
+        },
+        resources: this.resources
       }
     }
   }
@@ -84,6 +72,63 @@ class Morning {
     const player = _.find(this.game.players, { id: playerID })
     player.session = null
   }
+
+  execute (player, action, target) {
+    if (player.canAct === false) throw error.BAD_REQUEST
+
+    const actions = this.getActions(player)
+    const method = actions[action]
+
+    if (method === undefined) throw error.BAD_REQUEST
+
+    player.canAct = false
+    return method(player, target)
+  }
+}
+
+class Day extends AbstractPhase {
+  constructor (game, base, resources) {
+    super('day', game)
+
+    const initiative = []
+
+    this.actions = {
+      move: (player, target) => {
+        const location = base[target]
+
+        if (location === undefined) throw error.BAD_REQUEST
+
+        initiative.push(player)
+        player.location = location
+
+        if (initiative.length === game.players.length) {
+          game.state = new Night(game, base, resources, initiative)
+        }
+
+        game.push(player.id)
+        return { state: game.state.view(player) }
+      }
+    }
+
+    game.players.forEach(player => {
+      player.location = null
+      player.canAct = true
+    })
+  }
+
+  getActions (player) {
+    return this.actions
+  }
+}
+
+class Night extends AbstractPhase {
+  constructor (game) {
+    super('night', game)
+  }
+
+  getActions (player) {
+    return {}
+  }
 }
 
 class Lobby {
@@ -93,13 +138,11 @@ class Lobby {
 
     this.startTime = null
     this.timer = null
-
-    this.actions = {}
   }
 
   view (player) {
     return {
-      name: 'lobby',
+      phase: 'lobby',
       info: {
         players: this.game.players,
         startTime: this.startTime
@@ -133,6 +176,10 @@ class Lobby {
     this.game.push(playerID)
   }
 
+  execute (player, action, target) {
+    throw error.BAD_REQUEST
+  }
+
   begin () {
     _.zipWith(this.game.players, _.shuffle(this.roster), (player, job) => {
       player.job = job
@@ -145,7 +192,7 @@ class Lobby {
       medicines: 3
     }
 
-    this.game.state = new Morning(this.game, base, resources)
+    this.game.state = new Day(this.game, base, resources)
     this.game.push()
   }
 
@@ -176,13 +223,9 @@ class Game extends EventEmitter {
     return this.state.leave(playerID)
   }
 
-  execute (playerID, action, params) {
+  execute (playerID, action, target) {
     const player = _.find(this.players, { id: playerID })
-    const method = this.state.actions[action]
-
-    if (method === undefined) throw error.BAD_REQUEST
-
-    return method(player, params)
+    return this.state.execute(player, action, target)
   }
 
   close () {
@@ -240,9 +283,9 @@ module.exports = class {
   }
 
   async execute (session, args) {
-    const { playerID, gameID, action, params } = args
+    const { playerID, gameID, action, target } = args
 
     const game = this.games.get(gameID)
-    return game.execute(playerID, action, params)
+    return game.execute(playerID, action, target)
   }
 }

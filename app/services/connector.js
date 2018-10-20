@@ -160,13 +160,13 @@ module.exports = class {
   }
 
   async execute (session, args) {
-    const { action, params } = args
+    const { action, target } = args
 
     if (session.player === null) throw error.UNAUTHORIZED
     if (session.gameID === null) throw error.NOT_IN_GAME
 
     const channel = this.discovery.get(session.hostname)
 
-    return channel.request('execute', { playerID: session.player.id, gameID: session.gameID, action, params })
+    return channel.request('execute', { playerID: session.player.id, gameID: session.gameID, action, target })
   }
 }
