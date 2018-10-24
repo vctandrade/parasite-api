@@ -1,42 +1,30 @@
 
-class Dormitory {
+class Location {
+  constructor (name) {
+    this.name = name
+  }
+
   toJSON () {
-    return 'dormitory'
+    return this.name
   }
 }
 
-class Infirmary {
-  toJSON () {
-    return 'infirmary'
-  }
-}
-
-class Kitchen {
-  toJSON () {
-    return 'kitchen'
-  }
-}
-
-class Laboratory {
-  toJSON () {
-    return 'laboratory'
-  }
-}
-
-class MechanicalRoom {
-  toJSON () {
-    return 'mechanicalroom'
-  }
-}
+const locations = [
+  'dormitory',
+  'infirmary',
+  'kitchen',
+  'laboratory',
+  'mechanical-room'
+]
 
 module.exports = {
   createBase: function () {
-    return {
-      dormitory: new Dormitory(),
-      infirmary: new Infirmary(),
-      kitchen: new Kitchen(),
-      laboratory: new Laboratory(),
-      mechanicalroom: new MechanicalRoom()
-    }
+    const base = {}
+
+    locations.forEach(name => {
+      base[name] = new Location(name)
+    })
+
+    return base
   }
 }

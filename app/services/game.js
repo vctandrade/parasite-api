@@ -1,5 +1,6 @@
 const _ = require('lodash')
 
+const actions = require('../shared/actions')
 const error = require('../shared/error')
 const jobs = require('../shared/jobs')
 const locations = require('../shared/locations')
@@ -13,6 +14,7 @@ class Player {
     this.name = name
     this.session = session
 
+    this.infected = false
     this.canAct = false
 
     this.job = null
@@ -46,6 +48,7 @@ class AbstractPhase {
         player: {
           name: player.name,
           job: player.job,
+          infected: player.infected,
           resources: player.resources,
           canAct: player.canAct
         },
@@ -53,7 +56,7 @@ class AbstractPhase {
           name: player.location,
           players: _.filter(this.game.players, other => other.location === player.location)
         },
-        resources: this.resources
+        resources: this.game.resources
       }
     }
   }
@@ -81,53 +84,78 @@ class AbstractPhase {
 
     if (method === undefined) throw error.BAD_REQUEST
 
-    player.canAct = false
-    return method(player, target)
+    return method(target)
   }
 }
 
 class Day extends AbstractPhase {
-  constructor (game, base, resources) {
+  constructor (game) {
     super('day', game)
-
-    const initiative = []
-
-    this.actions = {
-      move: (player, target) => {
-        const location = base[target]
-
-        if (location === undefined) throw error.BAD_REQUEST
-
-        initiative.push(player)
-        player.location = location
-
-        if (initiative.length === game.players.length) {
-          game.state = new Night(game, base, resources, initiative)
-        }
-
-        game.push(player.id)
-        return { state: game.state.view(player) }
-      }
-    }
 
     game.players.forEach(player => {
       player.location = null
       player.canAct = true
     })
+
+    this.initiative = []
   }
 
   getActions (player) {
-    return this.actions
+    return {
+      move: target => {
+        const location = this.game.base[target]
+
+        if (location === undefined) throw error.BAD_REQUEST
+
+        player.location = location
+        player.canAct = false
+
+        this.initiative.push(player)
+
+        if (this.initiative.length === this.game.players.length) {
+          this.game.phase = new Night(this.game, this.initiative)
+        }
+
+        this.game.push(player.id)
+        return { state: this.game.phase.view(player) }
+      }
+    }
   }
 }
 
 class Night extends AbstractPhase {
-  constructor (game) {
+  constructor (game, initiative) {
     super('night', game)
+
+    const next = initiative.shift()
+    next.canAct = true
+
+    this.initiative = initiative
   }
 
   getActions (player) {
-    return {}
+    return _.mapValues(actions, action => this.wrap(player, action))
+  }
+
+  wrap (player, method) {
+    return target => {
+      method(this.game, player, target)
+
+      player.canAct = false
+      const next = this.initiative.shift()
+
+      if (next === undefined) {
+        this.game.resources.energy = Math.max(this.game.resources.energy - 10, 0)
+
+        this.game.phase = new Day(this.game)
+        this.game.push(player.id)
+      } else {
+        next.canAct = true
+        next.push('state', this.view(next))
+      }
+
+      return { state: this.game.phase.view(player) }
+    }
   }
 }
 
@@ -181,18 +209,26 @@ class Lobby {
   }
 
   begin () {
-    _.zipWith(this.game.players, _.shuffle(this.roster), (player, job) => {
-      player.job = job
-    })
+    const parasite = []
+    const size = this.game.players.length
 
-    const base = locations.createBase()
-    const resources = {
-      energy: 100,
-      food: 5,
-      medicines: 3
+    for (let i = 0; i < size; ++i) {
+      parasite.push(i >= Math.floor(size / 2))
     }
 
-    this.game.state = new Day(this.game, base, resources)
+    _.zipWith(this.game.players, _.shuffle(this.roster), _.shuffle(parasite), (player, job, infected) => {
+      player.job = job
+      player.infected = infected
+    })
+
+    this.game.base = locations.createBase()
+    this.game.resources = {
+      energy: 100,
+      food: 5,
+      remedy: 3
+    }
+
+    this.game.phase = new Day(this.game)
     this.game.push()
   }
 
@@ -205,27 +241,26 @@ class Game extends EventEmitter {
   constructor (roster) {
     super()
 
-    roster = _.map(roster, jobID => {
-      const Job = jobs[jobID]
-      if (Job === undefined) throw error.BAD_REQUEST
-      return new Job()
-    })
+    if (_.some(roster, job => _.includes(jobs, job) === false)) throw error.BAD_REQUEST
 
-    this.state = new Lobby(this, roster)
+    this.phase = new Lobby(this, roster)
     this.players = []
+
+    this.base = null
+    this.resources = null
   }
 
   join (playerID, playerName, session) {
-    return this.state.join(playerID, playerName, session)
+    return this.phase.join(playerID, playerName, session)
   }
 
   leave (playerID) {
-    return this.state.leave(playerID)
+    return this.phase.leave(playerID)
   }
 
   execute (playerID, action, target) {
     const player = _.find(this.players, { id: playerID })
-    return this.state.execute(player, action, target)
+    return this.phase.execute(player, action, target)
   }
 
   close () {
@@ -235,7 +270,7 @@ class Game extends EventEmitter {
 
   push (playerID) {
     this.players.forEach(player => {
-      if (player.id !== playerID) player.push('state', this.state.view(player))
+      if (player.id !== playerID) player.push('state', this.phase.view(player))
     })
   }
 }
