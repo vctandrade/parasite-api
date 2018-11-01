@@ -62,7 +62,8 @@ module.exports = {
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina = Math.min(player.resources.stamina + 3, 10)
+    player.resources.hunger -= 2
+    player.resources.stamina = Math.min(player.resources.stamina + 5, 10)
   },
 
   'eat': function (game, player, target) {
@@ -73,7 +74,7 @@ module.exports = {
     ) throw error.BAD_REQUEST
 
     game.resources.food -= 1
-    player.resources.stamina = Math.min(player.resources.stamina + 4, 10)
+    player.resources.hunger = Math.min(player.resources.hunger + 3, 10)
   },
 
   'cook': function (game, player, target) {

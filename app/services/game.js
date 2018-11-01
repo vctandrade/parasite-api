@@ -22,7 +22,8 @@ class Player {
 
     this.resources = {
       health: 10,
-      stamina: 10
+      stamina: 10,
+      hunger: 10
     }
   }
 
@@ -224,8 +225,8 @@ class Lobby {
     this.game.base = locations.createBase()
     this.game.resources = {
       energy: 100,
-      food: 5,
-      remedy: 3
+      food: 10,
+      remedy: 10
     }
 
     this.game.phase = new Day(this.game)
