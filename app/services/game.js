@@ -57,7 +57,8 @@ class AbstractPhase {
           name: player.location,
           players: _.filter(this.game.players, other => other.location === player.location)
         },
-        resources: this.game.resources
+        resources: this.game.resources,
+        round: this.game.round
       }
     }
   }
@@ -89,9 +90,9 @@ class AbstractPhase {
   }
 }
 
-class Day extends AbstractPhase {
+class Dawn extends AbstractPhase {
   constructor (game) {
-    super('day', game)
+    super('dawn', game)
 
     game.players.forEach(player => {
       player.location = null
@@ -114,7 +115,7 @@ class Day extends AbstractPhase {
         this.initiative.push(player)
 
         if (this.initiative.length === this.game.players.length) {
-          this.game.phase = new Night(this.game, this.initiative)
+          this.game.phase = new Day(this.game, this.initiative)
         }
 
         this.game.push(player.id)
@@ -124,9 +125,9 @@ class Day extends AbstractPhase {
   }
 }
 
-class Night extends AbstractPhase {
+class Day extends AbstractPhase {
   constructor (game, initiative) {
-    super('night', game)
+    super('day', game)
 
     const next = initiative.shift()
     next.canAct = true
@@ -148,7 +149,7 @@ class Night extends AbstractPhase {
       if (next === undefined) {
         this.game.resources.energy = Math.max(this.game.resources.energy - 10, 0)
 
-        this.game.phase = new Day(this.game)
+        this.game.phase = new Night(this.game)
         this.game.push(player.id)
       } else {
         next.canAct = true
@@ -156,6 +157,45 @@ class Night extends AbstractPhase {
       }
 
       return { state: this.game.phase.view(player) }
+    }
+  }
+}
+
+class Night extends AbstractPhase {
+  constructor (game) {
+    super('night', game)
+
+    game.players.forEach(player => {
+      player.canAct = true
+    })
+
+    this.remaining = game.players.length
+  }
+
+  getActions (player) {
+    return {
+      ready: target => {
+        player.canAct = false
+        this.remaining -= 1
+
+        if (this.remaining === 0) {
+          this.game.phase = new Dawn(this.game)
+          this.game.round += 1
+
+          this.game.players.forEach(player => {
+            player.resources.hunger -= 2
+
+            if (player.resources.hunger < 0) {
+              player.resources.health = Math.max(player.resources.health + player.resources.hunger, 0)
+              player.resources.hunger = 0
+            }
+          })
+
+          this.game.push(player.id)
+        }
+
+        return { state: this.game.phase.view(player) }
+      }
     }
   }
 }
@@ -222,6 +262,7 @@ class Lobby {
       player.infected = infected
     })
 
+    this.game.round = 1
     this.game.base = locations.createBase()
     this.game.resources = {
       energy: 100,
@@ -229,7 +270,7 @@ class Lobby {
       remedy: 10
     }
 
-    this.game.phase = new Day(this.game)
+    this.game.phase = new Dawn(this.game)
     this.game.push()
   }
 
@@ -249,6 +290,7 @@ class Game extends EventEmitter {
 
     this.base = null
     this.resources = null
+    this.round = null
   }
 
   join (playerID, playerName, session) {

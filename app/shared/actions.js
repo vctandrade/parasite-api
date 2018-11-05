@@ -17,10 +17,9 @@ module.exports = {
     game.resources.energy -= 8
 
     game.players.forEach(other => {
-      if (other.id === player.id) return
       if (other.location !== player.location) return
 
-      other.resources.stamina = Math.min(other.resources.stamina + 4, 10)
+      other.resources.hunger = Math.min(other.resources.hunger + 4, 10)
     })
   },
 
@@ -62,7 +61,6 @@ module.exports = {
 
     ) throw error.BAD_REQUEST
 
-    player.resources.hunger -= 2
     player.resources.stamina = Math.min(player.resources.stamina + 5, 10)
   },
 
