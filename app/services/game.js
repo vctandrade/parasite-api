@@ -147,8 +147,6 @@ class Day extends AbstractPhase {
       const next = this.initiative.shift()
 
       if (next === undefined) {
-        this.game.resources.energy = Math.max(this.game.resources.energy - 10, 0)
-
         this.game.phase = new Night(this.game)
         this.game.push(player.id)
       } else {
@@ -181,6 +179,9 @@ class Night extends AbstractPhase {
         if (this.remaining === 0) {
           this.game.phase = new Dawn(this.game)
           this.game.round += 1
+
+          this.game.resources.energy = Math.max(this.game.resources.energy + this.game.resources.generator - 10, 0)
+          this.game.resources.generator = Math.max(this.game.resources.generator - 1, 0)
 
           this.game.players.forEach(player => {
             player.resources.hunger -= 2
@@ -265,9 +266,10 @@ class Lobby {
     this.game.round = 1
     this.game.base = locations.createBase()
     this.game.resources = {
-      energy: 100,
-      food: 10,
-      remedy: 10
+      energy: 50,
+      food: 0,
+      remedy: 0,
+      generator: 10
     }
 
     this.game.phase = new Dawn(this.game)

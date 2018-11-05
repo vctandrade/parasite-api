@@ -43,16 +43,27 @@ module.exports = {
     })
   },
 
-  'boost-generator': function (game, player, target) {
+  'fix-generator': function (game, player, target) {
     if (
-      player.location.name !== 'mechanical-room' ||
+      player.location.name !== 'generator' ||
+      player.resources.stamina < 3
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina -= 3
+    game.resources.generator = Math.min(game.resources.generator + 2, 10)
+  },
+
+  'overclock': function (game, player, target) {
+    if (
+      player.location.name !== 'generator' ||
       player.job !== 'electricist' ||
       player.resources.stamina < 5
 
     ) throw error.BAD_REQUEST
 
     player.resources.stamina -= 5
-    game.resources.energy = Math.min(game.resources.energy + 15, 100)
+    game.resources.energy = Math.min(game.resources.energy + game.resources.generator, 100)
   },
 
   'sleep': function (game, player, target) {

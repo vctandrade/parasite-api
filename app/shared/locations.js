@@ -11,10 +11,10 @@ class Location {
 
 const locations = [
   'dormitory',
+  'generator',
   'infirmary',
   'kitchen',
-  'laboratory',
-  'mechanical-room'
+  'laboratory'
 ]
 
 module.exports = {
