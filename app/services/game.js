@@ -39,6 +39,7 @@ class Player {
 
   toJSON () {
     return {
+      id: this.id,
       name: this.name,
       state: this.state
     }
