@@ -15,8 +15,8 @@ class Player {
     this.session = session
 
     this.infected = false
-    this.canAct = false
 
+    this.state = null
     this.job = null
     this.location = null
 
@@ -25,6 +25,11 @@ class Player {
       stamina: 10,
       hunger: 10
     }
+  }
+
+  damage (value) {
+    this.resources.health = Math.max(this.resources.health - value, 0)
+    if (this.resources.health === 0) this.state = 'dead'
   }
 
   push (topic, data) {
@@ -51,7 +56,7 @@ class AbstractPhase {
           job: player.job,
           infected: player.infected,
           resources: player.resources,
-          canAct: player.canAct
+          state: player.state
         },
         location: {
           name: player.location,
@@ -79,7 +84,7 @@ class AbstractPhase {
   }
 
   execute (player, action, target) {
-    if (player.canAct === false) throw error.BAD_REQUEST
+    if (player.state !== 'idle') throw error.BAD_REQUEST
 
     const actions = this.getActions(player)
     const method = actions[action]
@@ -94,12 +99,18 @@ class Dawn extends AbstractPhase {
   constructor (game) {
     super('dawn', game)
 
-    game.players.forEach(player => {
-      player.location = null
-      player.canAct = true
-    })
-
     this.initiative = []
+    this.alive = 0
+
+    game.players.forEach(player => {
+      if (player.state === 'dead') player.location = 'morgue'
+      else {
+        player.location = 'courtyard'
+        player.state = 'idle'
+
+        this.alive += 1
+      }
+    })
   }
 
   getActions (player) {
@@ -110,11 +121,11 @@ class Dawn extends AbstractPhase {
         if (location === undefined) throw error.BAD_REQUEST
 
         player.location = location
-        player.canAct = false
+        player.state = 'busy'
 
         this.initiative.push(player)
 
-        if (this.initiative.length === this.game.players.length) {
+        if (this.initiative.length === this.alive) {
           this.game.phase = new Day(this.game, this.initiative)
         }
 
@@ -129,9 +140,7 @@ class Day extends AbstractPhase {
   constructor (game, initiative) {
     super('day', game)
 
-    const next = initiative.shift()
-    next.canAct = true
-
+    initiative.shift().state = 'idle'
     this.initiative = initiative
   }
 
@@ -143,15 +152,22 @@ class Day extends AbstractPhase {
     return target => {
       method(this.game, player, target)
 
-      player.canAct = false
-      const next = this.initiative.shift()
+      player.state = 'busy'
 
-      if (next === undefined) {
-        this.game.phase = new Night(this.game)
-        this.game.push(player.id)
-      } else {
-        next.canAct = true
-        next.push('state', this.view(next))
+      while (true) {
+        const next = this.initiative.shift()
+
+        if (next === undefined) {
+          this.game.phase = new Night(this.game)
+          this.game.push(player.id)
+          break
+        }
+
+        if (next.state === 'busy') {
+          next.state = 'idle'
+          next.push('state', this.view(next))
+          break
+        }
       }
 
       return { state: this.game.phase.view(player) }
@@ -163,23 +179,24 @@ class Night extends AbstractPhase {
   constructor (game) {
     super('night', game)
 
-    game.players.forEach(player => {
-      player.canAct = true
-    })
+    this.remaining = 0
 
-    this.remaining = game.players.length
+    game.players.forEach(player => {
+      switch (player.state) {
+        case 'busy':
+          player.state = 'idle'
+          this.remaining += 1
+          break
+      }
+    })
   }
 
   getActions (player) {
     return {
       ready: target => {
-        player.canAct = false
-        this.remaining -= 1
+        player.state = 'busy'
 
-        if (this.remaining === 0) {
-          this.game.phase = new Dawn(this.game)
-          this.game.round += 1
-
+        if (--this.remaining === 0) {
           this.game.resources.energy = Math.max(this.game.resources.energy + this.game.resources.generator - 10, 0)
           this.game.resources.generator = Math.max(this.game.resources.generator - 1, 0)
 
@@ -187,10 +204,13 @@ class Night extends AbstractPhase {
             player.resources.hunger -= 2
 
             if (player.resources.hunger < 0) {
-              player.resources.health = Math.max(player.resources.health + player.resources.hunger, 0)
+              player.damage(-player.resources.hunger)
               player.resources.hunger = 0
             }
           })
+
+          this.game.phase = new Dawn(this.game)
+          this.game.round += 1
 
           this.game.push(player.id)
         }

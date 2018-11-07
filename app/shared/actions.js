@@ -38,6 +38,7 @@ module.exports = {
     game.players.forEach(other => {
       if (other.id === player.id) return
       if (other.location !== player.location) return
+      if (other.state === 'dead') return
 
       other.resources.health = Math.min(other.resources.health + 6, 10)
     })
