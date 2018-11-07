@@ -19,6 +19,7 @@ class Player {
     this.state = null
     this.job = null
     this.location = null
+    this.snapshot = null
 
     this.resources = {
       health: 10,
@@ -37,7 +38,10 @@ class Player {
   }
 
   toJSON () {
-    return this.name
+    return {
+      name: this.name,
+      state: this.state
+    }
   }
 }
 
@@ -60,9 +64,9 @@ class AbstractPhase {
         },
         location: {
           name: player.location,
-          players: _.filter(this.game.players, other => other.location === player.location)
+          players: _.filter(this.game.players, other => other.location === player.location && other.id !== player.id)
         },
-        resources: this.game.resources,
+        resources: player.snapshot,
         round: this.game.round
       }
     }
@@ -91,7 +95,10 @@ class AbstractPhase {
 
     if (method === undefined) throw error.BAD_REQUEST
 
-    return method(target)
+    method(target)
+
+    this.game.push(player.id)
+    return { state: this.game.phase.view(player) }
   }
 }
 
@@ -99,17 +106,20 @@ class Dawn extends AbstractPhase {
   constructor (game) {
     super('dawn', game)
 
+    const snapshot = _.clone(this.game.resources)
+
     this.initiative = []
-    this.alive = 0
+    this.remaining = 0
 
     game.players.forEach(player => {
-      if (player.state === 'dead') player.location = 'morgue'
-      else {
-        player.location = 'courtyard'
-        player.state = 'idle'
+      player.snapshot = snapshot
 
-        this.alive += 1
-      }
+      if (player.state === 'dead') return
+
+      player.state = 'idle'
+      player.location = 'courtyard'
+
+      this.remaining += 1
     })
   }
 
@@ -125,12 +135,9 @@ class Dawn extends AbstractPhase {
 
         this.initiative.push(player)
 
-        if (this.initiative.length === this.alive) {
+        if (--this.remaining === 0) {
           this.game.phase = new Day(this.game, this.initiative)
         }
-
-        this.game.push(player.id)
-        return { state: this.game.phase.view(player) }
       }
     }
   }
@@ -152,25 +159,25 @@ class Day extends AbstractPhase {
     return target => {
       method(this.game, player, target)
 
+      const snapshot = _.clone(this.game.resources)
+
       player.state = 'busy'
+      player.snapshot = snapshot
 
       while (true) {
         const next = this.initiative.shift()
 
         if (next === undefined) {
           this.game.phase = new Night(this.game)
-          this.game.push(player.id)
           break
         }
 
         if (next.state === 'busy') {
           next.state = 'idle'
-          next.push('state', this.view(next))
+          next.snapshot = snapshot
           break
         }
       }
-
-      return { state: this.game.phase.view(player) }
     }
   }
 }
@@ -179,15 +186,19 @@ class Night extends AbstractPhase {
   constructor (game) {
     super('night', game)
 
+    const snapshot = _.clone(this.game.resources)
+
     this.remaining = 0
 
     game.players.forEach(player => {
-      switch (player.state) {
-        case 'busy':
-          player.state = 'idle'
-          this.remaining += 1
-          break
-      }
+      player.snapshot = snapshot
+
+      if (player.state === 'dead') return
+
+      player.state = 'idle'
+      player.location = 'courtyard'
+
+      this.remaining += 1
     })
   }
 
@@ -211,11 +222,7 @@ class Night extends AbstractPhase {
 
           this.game.phase = new Dawn(this.game)
           this.game.round += 1
-
-          this.game.push(player.id)
         }
-
-        return { state: this.game.phase.view(player) }
       }
     }
   }
