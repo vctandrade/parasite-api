@@ -87,6 +87,7 @@ module.exports = class {
     })
 
     return {
+      id: session.player.id,
       name: session.player.name
     }
   }

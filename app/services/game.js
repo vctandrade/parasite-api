@@ -36,14 +36,6 @@ class Player {
   push (topic, data) {
     if (this.session) this.session.push(topic, { playerID: this.id, content: data })
   }
-
-  toJSON () {
-    return {
-      id: this.id,
-      name: this.name,
-      state: this.state
-    }
-  }
 }
 
 class AbstractPhase {
@@ -65,7 +57,14 @@ class AbstractPhase {
         },
         location: {
           name: player.location,
-          players: _.filter(this.game.players, other => other.location === player.location && other.id !== player.id)
+          players: _.filter(this.game.players, other => other.location === player.location && other.id !== player.id).map(other => {
+            return {
+              id: other.id,
+              name: other.name,
+              state: other.state,
+              infected: player.infected ? other.infected : null
+            }
+          })
         },
         resources: player.snapshot,
         round: this.game.round
@@ -242,7 +241,7 @@ class Lobby {
     return {
       phase: 'lobby',
       info: {
-        players: this.game.players,
+        players: this.game.players.map(other => other.name),
         startTime: this.startTime
       }
     }
