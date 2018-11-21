@@ -7,6 +7,7 @@ const locations = require('../shared/locations')
 const shortid = require('shortid')
 
 const EventEmitter = require('events')
+const Resource = require('../shared/resource')
 
 class Player {
   constructor (id, name, session) {
@@ -22,15 +23,15 @@ class Player {
     this.snapshot = null
 
     this.resources = {
-      health: 10,
-      stamina: 10,
-      hunger: 10
+      health: new Resource(10, 10),
+      stamina: new Resource(10, 10),
+      hunger: new Resource(10, 10)
     }
   }
 
   damage (value) {
-    this.resources.health = Math.max(this.resources.health - value, 0)
-    if (this.resources.health === 0) this.state = 'dead'
+    this.resources.health.update(-value)
+    if (this.resources.health.value === 0) this.state = 'dead'
   }
 
   push (topic, data) {
@@ -208,16 +209,12 @@ class Night extends AbstractPhase {
         player.state = 'busy'
 
         if (--this.remaining === 0) {
-          this.game.resources.energy = Math.max(this.game.resources.energy + this.game.resources.generator - 10, 0)
-          this.game.resources.generator = Math.max(this.game.resources.generator - 1, 0)
+          this.game.resources.energy.update(this.game.resources.generator.value - 10)
+          this.game.resources.generator.update(-1)
 
           this.game.players.forEach(player => {
-            player.resources.hunger -= 2
-
-            if (player.resources.hunger < 0) {
-              player.damage(-player.resources.hunger)
-              player.resources.hunger = 0
-            }
+            player.damage(Math.max(0, 2 - player.resources.hunger.value) * 2)
+            player.resources.hunger.update(-2)
           })
 
           this.game.phase = new Dawn(this.game)
@@ -293,10 +290,10 @@ class Lobby {
     this.game.round = 1
     this.game.base = locations.createBase()
     this.game.resources = {
-      energy: 50,
-      food: 0,
-      remedy: 0,
-      generator: 10
+      energy: new Resource(50, 50),
+      food: new Resource(0, 50),
+      remedy: new Resource(0, 50),
+      generator: new Resource(10, 10)
     }
 
     this.game.phase = new Dawn(this.game)

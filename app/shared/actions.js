@@ -16,71 +16,67 @@ module.exports = {
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina = Math.min(player.resources.stamina + 5, 10)
+    player.resources.stamina.update(+5)
   },
 
   'fix-generator': function (game, player, target) {
     if (
       player.location.name !== 'generator' ||
-      player.resources.stamina < 3
+      player.resources.stamina.value < 3
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 3
-
-    game.resources.generator = Math.min(game.resources.generator + 2, 10)
+    player.resources.stamina.update(-3)
+    game.resources.generator.update(+2)
   },
 
   'first-aid': function (game, player, target) {
     if (
       player.location.name !== 'infirmary' ||
-      game.resources.remedy < 1
+      game.resources.remedy.value < 1
 
     ) throw error.BAD_REQUEST
 
-    game.resources.remedy -= 1
-
-    player.resources.health = Math.min(player.resources.health + 4, 10)
+    game.resources.remedy.update(-1)
+    player.resources.health.update(+4)
   },
 
   'cook': function (game, player, target) {
     if (
       player.location.name !== 'kitchen' ||
-      player.resources.stamina < 2 ||
-      game.resources.energy < 3
+      player.resources.stamina.value < 2 ||
+      game.resources.energy.value < 3
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 2
-    game.resources.energy -= 3
-
-    game.resources.food += 4
+    player.resources.stamina.update(-2)
+    game.resources.energy.update(-3)
+    game.resources.food.update(+4)
   },
 
   'eat': function (game, player, target) {
     if (
       player.location.name !== 'kitchen' ||
-      game.resources.food < 1
+      game.resources.food.value < 1
 
     ) throw error.BAD_REQUEST
 
-    game.resources.food -= 1
-
-    player.resources.hunger = Math.min(player.resources.hunger + 3, 10)
+    game.resources.food.update(-1)
+    player.resources.hunger.update(+3)
   },
 
   'research': function (game, player, target) {
     if (
       player.location.name !== 'laboratory' ||
-      player.resources.stamina < 7 ||
-      game.resources.energy < 5
+      player.resources.stamina.value < 7 ||
+      game.resources.energy.value < 5
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 7
-    game.resources.energy -= 5
+    player.resources.stamina.update(-7)
+    game.resources.energy.update(-5)
 
-    game.resources.remedy += 2
+    game.resources.remedy.update(+2)
   },
 
   // Job actions
@@ -89,19 +85,19 @@ module.exports = {
     if (
       player.job !== 'cook' ||
       player.location.name !== 'kitchen' ||
-      player.resources.stamina < 6 ||
-      game.resources.energy < 8
+      player.resources.stamina.value < 6 ||
+      game.resources.energy.value < 8
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 6
-    game.resources.energy -= 8
+    player.resources.stamina.update(-6)
+    game.resources.energy.update(-8)
 
     game.players.forEach(other => {
       if (other.location !== player.location) return
       if (other.state === 'dead') return
 
-      other.resources.hunger = Math.min(other.resources.hunger + 4, 10)
+      other.resources.hunger.update(+4)
     })
   },
 
@@ -109,13 +105,12 @@ module.exports = {
     if (
       player.job !== 'electricist' ||
       player.location.name !== 'generator' ||
-      player.resources.stamina < 5
+      player.resources.stamina.value < 5
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 5
-
-    game.resources.energy = Math.min(game.resources.energy + game.resources.generator, 100)
+    player.resources.stamina.update(-5)
+    game.resources.energy.update(game.resources.generator.value)
   },
 
   'tase': function (game, player, target) {
@@ -123,17 +118,17 @@ module.exports = {
 
     if (
       player.job !== 'guard' ||
-      player.resources.stamina < 1 ||
-      game.resources.energy < 5 ||
+      player.resources.stamina.value < 1 ||
+      game.resources.energy.value < 5 ||
       other === undefined ||
-      other.state !== 'dead'
+      other.state === 'dead'
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 1
-    game.resources.energy -= 5
+    player.resources.stamina.update(-1)
+    game.resources.energy.update(-5)
 
-    other.resources.stamina = Math.max(other.resources.stamina - 4, 0)
+    other.resources.stamina.update(-4)
     other.damage(6)
   },
 
@@ -142,13 +137,13 @@ module.exports = {
 
     if (
       player.job !== 'janitor' ||
-      player.resources.stamina < 4 ||
+      player.resources.stamina.value < 4 ||
       other === undefined ||
       other.state !== 'dead'
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 4
+    player.resources.stamina.update(-4)
 
     other.location = 'morgue'
   },
@@ -156,31 +151,31 @@ module.exports = {
   'pep-talk': function (game, player, target) {
     if (
       player.job !== 'manager' ||
-      player.resources.stamina < 6
+      player.resources.stamina.value < 6
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 6
+    player.resources.stamina.update(-6)
 
     game.players.forEach(other => {
       if (other.id === player.id) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
 
-      other.resources.stamina = Math.min(other.resources.health + 4, 10)
+      other.resources.stamina.update(+4)
     })
   },
 
   'trap': function (game, player, target) {
     if (
       player.job !== 'mechanic' ||
-      player.resources.stamina < 4 ||
-      game.resources.energy < 12
+      player.resources.stamina.value < 4 ||
+      game.resources.energy.value < 12
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 4
-    game.resources.energy -= 12
+    player.resources.stamina.update(-4)
+    game.resources.energy.update(-12)
 
     game.players.forEach(other => {
       if (other.id === player.id) return
@@ -195,20 +190,20 @@ module.exports = {
     if (
       player.job !== 'medic' ||
       player.location.name !== 'infirmary' ||
-      player.resources.stamina < 4 ||
-      game.resources.remedy < 3
+      player.resources.stamina.value < 4 ||
+      game.resources.remedy.value < 3
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 4
-    game.resources.remedy -= 3
+    player.resources.stamina.update(-4)
+    game.resources.remedy.update(-3)
 
     game.players.forEach(other => {
       if (other.id === player.id) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
 
-      other.resources.health = Math.min(other.resources.health + 6, 10)
+      other.resources.health.update(+6)
     })
   },
 
@@ -217,17 +212,17 @@ module.exports = {
 
     if (
       player.job !== 'scientist' ||
-      player.resources.stamina < 2 ||
-      game.resources.energy < 15 ||
+      player.resources.stamina.value < 2 ||
+      game.resources.energy.value < 15 ||
       other === undefined ||
       other.state !== 'dead'
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina -= 2
-    game.resources.energy -= 15
+    player.resources.stamina.update(-2)
+    game.resources.energy.update(-15)
 
-    other.resources.health = 2
+    other.resources.health.set(2)
     other.state = 'busy'
   }
 }
