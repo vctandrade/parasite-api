@@ -121,7 +121,8 @@ module.exports = {
       player.resources.stamina.value < 1 ||
       game.resources.energy.value < 5 ||
       other === undefined ||
-      other.state === 'dead'
+      other.state === 'dead' ||
+      other.location !== player.location
 
     ) throw error.BAD_REQUEST
 
@@ -139,7 +140,8 @@ module.exports = {
       player.job !== 'janitor' ||
       player.resources.stamina.value < 4 ||
       other === undefined ||
-      other.state !== 'dead'
+      other.state !== 'dead' ||
+      other.location !== player.location
 
     ) throw error.BAD_REQUEST
 

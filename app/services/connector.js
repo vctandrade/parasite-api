@@ -22,6 +22,8 @@ module.exports = class {
       const { topic, data } = body
 
       const session = this.sessions.get(data.playerID)
+      if (session === undefined) return
+
       session.push(topic, data.content)
 
       if (topic === 'kick') {
