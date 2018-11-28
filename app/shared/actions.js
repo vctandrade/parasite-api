@@ -8,6 +8,26 @@ module.exports = {
   'nothing': function (game, player, target) {
   },
 
+  'punch': function (game, player, target) {
+    const other = _.find(game.players, { id: target })
+
+    if (
+      player.resources.stamina.value < 2 ||
+      other === undefined ||
+      other === player ||
+      other.state === 'dead' ||
+      other.location !== player.location
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-2)
+    other.resources.health.update(-2)
+  },
+
+  'hide': function (game, player, target) {
+    player.hidden = true
+  },
+
   // Location actions
 
   'sleep': function (game, player, target) {
@@ -121,6 +141,7 @@ module.exports = {
       player.resources.stamina.value < 1 ||
       game.resources.energy.value < 5 ||
       other === undefined ||
+      other === player ||
       other.state === 'dead' ||
       other.location !== player.location
 
@@ -130,7 +151,7 @@ module.exports = {
     game.resources.energy.update(-5)
 
     other.resources.stamina.update(-4)
-    other.damage(6)
+    other.resources.health.update(-6)
   },
 
   'cleanup': function (game, player, target) {
@@ -160,7 +181,7 @@ module.exports = {
     player.resources.stamina.update(-6)
 
     game.players.forEach(other => {
-      if (other.id === player.id) return
+      if (other === player) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
 
@@ -180,11 +201,11 @@ module.exports = {
     game.resources.energy.update(-12)
 
     game.players.forEach(other => {
-      if (other.id === player.id) return
+      if (other === player) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
 
-      other.damage(4)
+      other.resources.health.update(-4)
     })
   },
 
@@ -201,7 +222,7 @@ module.exports = {
     game.resources.remedy.update(-3)
 
     game.players.forEach(other => {
-      if (other.id === player.id) return
+      if (other === player) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
 
@@ -224,7 +245,7 @@ module.exports = {
     player.resources.stamina.update(-2)
     game.resources.energy.update(-15)
 
-    other.resources.health.set(2)
+    other.resources.health.update(+2)
     other.state = 'busy'
   }
 }

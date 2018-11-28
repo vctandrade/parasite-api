@@ -1,6 +1,9 @@
+const EventEmitter = require('events')
 
-module.exports = class Resource {
+module.exports = class Resource extends EventEmitter {
   constructor (value, cap) {
+    super()
+
     this.value = value
     this.cap = cap
   }
@@ -11,6 +14,7 @@ module.exports = class Resource {
 
   set (value) {
     this.value = Math.min(Math.max(0, value), this.cap)
+    this.emit('update', this.value)
   }
 
   toJSON () {

@@ -16,6 +16,7 @@ class Player {
     this.session = session
 
     this.infected = false
+    this.hidden = false
 
     this.state = null
     this.job = null
@@ -27,11 +28,10 @@ class Player {
       stamina: new Resource(10, 10),
       hunger: new Resource(10, 10)
     }
-  }
 
-  damage (value) {
-    this.resources.health.update(-value)
-    if (this.resources.health.value === 0) this.state = 'dead'
+    this.resources.health.on('update', value => {
+      if (value === 0) this.state = 'dead'
+    })
   }
 
   push (topic, data) {
@@ -58,14 +58,20 @@ class AbstractPhase {
         },
         location: {
           name: player.location,
-          players: _.filter(this.game.players, other => other.location === player.location && other.id !== player.id).map(other => {
-            return {
-              id: other.id,
-              name: other.name,
-              state: other.state,
-              infected: player.infected ? other.infected : null
-            }
+          players: _.filter(this.game.players, other => {
+            if (other.id === player.id) return false
+            if (other.location !== player.location) return false
+            if (other.hidden) return false
+            return true
           })
+            .map(other => {
+              return {
+                id: other.id,
+                name: other.name,
+                state: other.state,
+                infected: player.infected ? other.infected : undefined
+              }
+            })
         },
         resources: player.snapshot,
         round: this.game.round
@@ -187,17 +193,24 @@ class Night extends AbstractPhase {
   constructor (game) {
     super('night', game)
 
-    const snapshot = _.clone(this.game.resources)
-
     this.remaining = 0
+
+    this.game.resources.energy.update(this.game.resources.generator.value - 10)
+    this.game.resources.generator.update(-1)
+
+    const snapshot = _.clone(this.game.resources)
 
     game.players.forEach(player => {
       player.snapshot = snapshot
+
+      player.resources.health.update(Math.min(0, player.resources.hunger.value - 2) * 2)
+      player.resources.hunger.update(-2)
 
       if (player.state === 'dead') return
 
       player.state = 'idle'
       player.location = 'courtyard'
+      player.hidden = false
 
       this.remaining += 1
     })
@@ -209,14 +222,6 @@ class Night extends AbstractPhase {
         player.state = 'busy'
 
         if (--this.remaining === 0) {
-          this.game.resources.energy.update(this.game.resources.generator.value - 10)
-          this.game.resources.generator.update(-1)
-
-          this.game.players.forEach(player => {
-            player.damage(Math.max(0, 2 - player.resources.hunger.value) * 2)
-            player.resources.hunger.update(-2)
-          })
-
           this.game.phase = new Dawn(this.game)
           this.game.round += 1
         }
