@@ -32,7 +32,7 @@ class Player {
     this.resources = {
       health: new Resource(10, 10),
       stamina: new Resource(10, 10),
-      hunger: new Resource(10, 10)
+      nutrition: new Resource(10, 10)
     }
 
     this.resources.health.on('update', value => {
@@ -60,7 +60,7 @@ class AbstractPhase {
           job: player.job,
           genotype: player.genotype,
           resources: player.resources,
-          contidions: player.conditions,
+          conditions: player.conditions,
           state: player.state
         },
         location: {
@@ -81,7 +81,7 @@ class AbstractPhase {
             })
         },
         resources: player.snapshot,
-        round: this.game.round
+        days: this.game.days
       }
     }
   }
@@ -124,7 +124,7 @@ class AbstractPhase {
 
   getWinner () {
     if (_.every(this.game.players, player => player.state === 'dead' || player.genotype !== null) || this.game.resources.energy.value === 0) return 'infected'
-    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.round === 16) return 'humans'
+    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.days === 0) return 'humans'
   }
 }
 
@@ -225,8 +225,8 @@ class Night extends AbstractPhase {
       if (player.conditions.sick) player.resources.health.update(-1)
       player.conditions.confused = false
 
-      player.resources.health.update(Math.min(0, player.resources.hunger.value - 2) * 2)
-      player.resources.hunger.update(-2)
+      player.resources.health.update(Math.min(0, player.resources.nutrition.value - 2) * 2)
+      player.resources.nutrition.update(-2)
 
       if (player.state === 'dead') return
 
@@ -245,7 +245,7 @@ class Night extends AbstractPhase {
 
         if (--this.remaining === 0) {
           this.game.phase = new Dawn(this.game)
-          this.game.round += 1
+          this.game.days -= 1
         }
       }
     }
@@ -314,7 +314,7 @@ class Lobby {
       player.genotype = genotype || null
     })
 
-    this.game.round = 1
+    this.game.days = 30
     this.game.base = locations.createBase()
     this.game.resources = {
       energy: new Resource(50, 50),
@@ -353,7 +353,7 @@ class End {
             }
           }),
         resources: this.game.resources,
-        round: this.game.round
+        days: this.game.days
       }
     }
   }
@@ -382,7 +382,7 @@ class Game extends EventEmitter {
 
     this.base = null
     this.resources = null
-    this.round = null
+    this.days = null
   }
 
   join (playerID, playerName, session) {

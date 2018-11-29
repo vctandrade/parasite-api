@@ -85,7 +85,7 @@ module.exports = {
     ) throw error.BAD_REQUEST
 
     game.resources.food.update(-1)
-    player.resources.hunger.update(+3)
+    player.resources.nutrition.update(+5)
   },
 
   'research': function (game, player, target) {
@@ -121,7 +121,7 @@ module.exports = {
       if (other.state === 'dead') return
       if (other.conditions.hidden) return
 
-      other.resources.hunger.update(+4)
+      other.resources.nutrition.update(+7)
     })
   },
 
@@ -375,7 +375,7 @@ module.exports = {
     ) throw error.BAD_REQUEST
 
     player.resources.stamina.update(-3)
-    player.resources.hunger.update(+3)
+    player.resources.nutrition.update(+3)
     other.resources.health.update(-4)
   },
 
@@ -394,7 +394,7 @@ module.exports = {
     ) throw error.BAD_REQUEST
 
     player.resources.stamina.update(-5)
-    player.resources.hunger.update(other.resources.health.update(-3))
+    player.resources.nutrition.update(other.resources.health.update(-3))
   },
 
   'transfuse': function (game, player, target) {
