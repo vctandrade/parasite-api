@@ -124,7 +124,7 @@ class AbstractPhase {
 
   getWinner () {
     if (_.every(this.game.players, player => player.state === 'dead' || player.genotype !== null) || this.game.resources.energy.value === 0) return 'infected'
-    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.round > 10) return 'humans'
+    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.round === 16) return 'humans'
   }
 }
 

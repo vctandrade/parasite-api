@@ -49,12 +49,7 @@ module.exports = class Channel extends EventEmitter {
       .finally(() => this.cb.delete(id))
   }
 
-  healthcheck () {
-    if (this.isAlive) this.isAlive = false
-    else this.close()
-  }
-
-  handle (message) {
+  async handle (message) {
     const { id, body } = JSON.parse(message)
 
     if (id === null) this.emit('push', body)
@@ -62,6 +57,11 @@ module.exports = class Channel extends EventEmitter {
       const callback = this.cb.get(id)
       if (callback) callback(body)
     }
+  }
+
+  healthcheck () {
+    if (this.isAlive) this.isAlive = false
+    else this.close()
   }
 
   close () {
