@@ -22,12 +22,11 @@ module.exports = class {
       const { topic, data } = body
 
       const session = this.sessions.get(data.playerID)
-      if (session === undefined) return
 
-      session.push(topic, data.content)
-
-      if (topic === 'kick') {
-        this.leaveGame(session)
+      if (topic !== 'internal') session.push(topic, data.content)
+      else {
+        const method = this[data.content.route]
+        method.call(this, session, data.content.args)
       }
     })
 

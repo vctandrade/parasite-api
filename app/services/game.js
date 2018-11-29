@@ -111,8 +111,20 @@ class AbstractPhase {
 
     method(target)
 
+    const winner = this.getWinner()
+
+    if (winner) {
+      this.game.phase = new End(this.game, winner)
+      this.game.close()
+    }
+
     this.game.push(player.id)
     return { state: this.game.phase.view(player) }
+  }
+
+  getWinner () {
+    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype !== null) || this.game.resources.energy.value === 0) return 'infected'
+    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.round > 10) return 'humans'
   }
 }
 
@@ -320,6 +332,44 @@ class Lobby {
   }
 }
 
+class End {
+  constructor (game, winner) {
+    this.game = game
+    this.winner = winner
+  }
+
+  view (player) {
+    return {
+      phase: 'end',
+      info: {
+        win: (player.genotype === null) === (this.winner === 'humans'),
+        players: this.game.players
+          .map(other => {
+            return {
+              name: other.name,
+              job: other.job,
+              genotype: other.genotype,
+              alive: other.state !== 'dead'
+            }
+          }),
+        resources: this.game.resources,
+        round: this.game.round
+      }
+    }
+  }
+
+  join (playerID, playerName, session) {
+    throw error.GAME_FULL
+  }
+
+  leave (playerID) {
+  }
+
+  execute (player, action, target) {
+    throw error.BAD_REQUEST
+  }
+}
+
 class Game extends EventEmitter {
   constructor (jobs, genotypes) {
     super()
@@ -349,8 +399,11 @@ class Game extends EventEmitter {
   }
 
   close () {
-    this.push('kick')
     this.emit('close')
+
+    this.players.forEach(player => {
+      player.push('internal', { route: 'leaveGame' })
+    })
   }
 
   push (playerID) {

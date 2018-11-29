@@ -8,10 +8,10 @@ module.exports = class Session {
     this.hostname = null
 
     this.disconnector = () => {
-      this.push('kick')
-
       this.gameID = null
       this.hostname = null
+
+      this.push('disconnect')
     }
   }
 
