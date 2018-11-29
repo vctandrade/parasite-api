@@ -1,6 +1,7 @@
 const _ = require('lodash')
 
 const error = require('../shared/error')
+const shortid = require('shortid')
 
 module.exports = {
   // Common actions
@@ -9,14 +10,15 @@ module.exports = {
   },
 
   'punch': function (game, player, target) {
-    const other = _.find(game.players, { id: target })
+    const other = _.find(game.players, { pid: target })
 
     if (
       player.resources.stamina.value < 2 ||
       other === undefined ||
       other === player ||
       other.state === 'dead' ||
-      other.location !== player.location
+      other.location !== player.location ||
+      other.conditions.hidden
 
     ) throw error.BAD_REQUEST
 
@@ -25,7 +27,7 @@ module.exports = {
   },
 
   'hide': function (game, player, target) {
-    player.hidden = true
+    player.conditions.hidden = true
   },
 
   // Location actions
@@ -59,6 +61,7 @@ module.exports = {
 
     game.resources.remedy.update(-1)
     player.resources.health.update(+4)
+    player.conditions.sick = false
   },
 
   'cook': function (game, player, target) {
@@ -116,6 +119,7 @@ module.exports = {
     game.players.forEach(other => {
       if (other.location !== player.location) return
       if (other.state === 'dead') return
+      if (other.conditions.hidden) return
 
       other.resources.hunger.update(+4)
     })
@@ -134,7 +138,7 @@ module.exports = {
   },
 
   'tase': function (game, player, target) {
-    const other = _.find(game.players, { id: target })
+    const other = _.find(game.players, { pid: target })
 
     if (
       player.job !== 'guard' ||
@@ -143,7 +147,8 @@ module.exports = {
       other === undefined ||
       other === player ||
       other.state === 'dead' ||
-      other.location !== player.location
+      other.location !== player.location ||
+      other.conditions.hidden
 
     ) throw error.BAD_REQUEST
 
@@ -155,14 +160,15 @@ module.exports = {
   },
 
   'cleanup': function (game, player, target) {
-    const other = _.find(game.players, { id: target })
+    const other = _.find(game.players, { pid: target })
 
     if (
       player.job !== 'janitor' ||
       player.resources.stamina.value < 4 ||
       other === undefined ||
       other.state !== 'dead' ||
-      other.location !== player.location
+      other.location !== player.location ||
+      other.conditions.hidden
 
     ) throw error.BAD_REQUEST
 
@@ -184,6 +190,7 @@ module.exports = {
       if (other === player) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
+      if (other.conditions.hidden) return
 
       other.resources.stamina.update(+4)
     })
@@ -204,6 +211,7 @@ module.exports = {
       if (other === player) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
+      if (other.conditions.hidden) return
 
       other.resources.health.update(-4)
     })
@@ -225,20 +233,23 @@ module.exports = {
       if (other === player) return
       if (other.location !== player.location) return
       if (other.state === 'dead') return
+      if (other.conditions.hidden) return
 
       other.resources.health.update(+6)
+      other.conditions.sick = false
     })
   },
 
   'reanimate': function (game, player, target) {
-    const other = _.find(game.players, { id: target })
+    const other = _.find(game.players, { pid: target })
 
     if (
       player.job !== 'scientist' ||
       player.resources.stamina.value < 2 ||
       game.resources.energy.value < 15 ||
       other === undefined ||
-      other.state !== 'dead'
+      other.state !== 'dead' ||
+      other.conditions.hidden
 
     ) throw error.BAD_REQUEST
 
@@ -247,5 +258,158 @@ module.exports = {
 
     other.resources.health.update(+2)
     other.state = 'busy'
+  },
+
+  // Genotype actions
+
+  'mind-games': function (game, player, target) {
+    const other = _.find(game.players, { pid: target })
+
+    if (
+      player.genotype !== 'swapper' ||
+      player.resources.stamina.value < 5 ||
+      other === undefined ||
+      other === player ||
+      other.state === 'dead' ||
+      other.location !== player.location ||
+      other.conditions.hidden
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-5)
+
+    let buffer
+
+    buffer = player.name
+    player.name = other.name
+    other.name = buffer
+
+    buffer = player.job
+    player.job = other.job
+    other.job = buffer
+  },
+
+  'sicken': function (game, player, target) {
+    const other = _.find(game.players, { pid: target })
+
+    if (
+      player.genotype !== 'swapper' ||
+      player.resources.stamina.value < 2 ||
+      other === undefined ||
+      other === player ||
+      other.state === 'dead' ||
+      other.location !== player.location ||
+      other.conditions.hidden
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-2)
+    other.conditions.sick = true
+  },
+
+  'mesmerise': function (game, player, target) {
+    if (
+      player.genotype !== 'illusionist'
+
+    ) throw error.BAD_REQUEST
+
+    game.players.forEach(other => {
+      if (other === player) return
+      if (other.location !== player.location) return
+      if (other.state === 'dead') return
+      if (other.conditions.hidden) return
+
+      player.resources.stamina.update(other.resources.stamina.update(-2))
+    })
+  },
+
+  'confuse': function (game, player, target) {
+    if (
+      player.genotype !== 'illusionist' ||
+      player.resources.stamina.value < 4
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-4)
+
+    game.players.forEach(other => {
+      if (other === player) return
+      if (other.location !== player.location) return
+      if (other.state === 'dead') return
+      if (other.conditions.hidden) return
+
+      other.conditions.confused = true
+    })
+
+    game.players.forEach(other => {
+      other.pid = shortid.generate()
+    })
+
+    game.players = _.shuffle(game.players)
+  },
+
+  'sabotage': function (game, player, target) {
+    if (
+      player.genotype !== 'brute' ||
+      player.location.name !== 'generator' ||
+      player.resources.stamina.value < 4
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-4)
+    game.resources.generator.update(-4)
+  },
+
+  'cannibalize': function (game, player, target) {
+    const other = _.find(game.players, { pid: target })
+
+    if (
+      player.genotype !== 'brute' ||
+      player.resources.stamina.value < 3 ||
+      other === undefined ||
+      other === player ||
+      other.state === 'dead' ||
+      other.location !== player.location ||
+      other.conditions.hidden
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-3)
+    player.resources.hunger.update(+3)
+    other.resources.health.update(-4)
+  },
+
+  'feed': function (game, player, target) {
+    const other = _.find(game.players, { pid: target })
+
+    if (
+      player.genotype !== 'leech' ||
+      player.resources.stamina.value < 5 ||
+      other === undefined ||
+      other === player ||
+      other.state === 'dead' ||
+      other.location !== player.location ||
+      other.conditions.hidden
+
+    ) throw error.BAD_REQUEST
+
+    player.resources.stamina.update(-5)
+    player.resources.hunger.update(other.resources.health.update(-3))
+  },
+
+  'transfuse': function (game, player, target) {
+    const other = _.find(game.players, { pid: target })
+
+    if (
+      player.genotype !== 'leech' ||
+      other === undefined ||
+      other === player ||
+      other.state === 'dead' ||
+      other.location !== player.location ||
+      other.conditions.hidden
+
+    ) throw error.BAD_REQUEST
+
+    other.resources.health.update(player.resources.health.update(-4))
   }
 }

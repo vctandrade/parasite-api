@@ -2,8 +2,8 @@ const _ = require('lodash')
 
 const actions = require('../shared/actions')
 const error = require('../shared/error')
-const jobs = require('../shared/jobs')
 const locations = require('../shared/locations')
+const roster = require('../shared/roster')
 const shortid = require('shortid')
 
 const EventEmitter = require('events')
@@ -15,13 +15,19 @@ class Player {
     this.name = name
     this.session = session
 
-    this.infected = false
-    this.hidden = false
+    this.pid = shortid.generate()
 
     this.state = null
     this.job = null
+    this.genotype = null
     this.location = null
     this.snapshot = null
+
+    this.conditions = {
+      confused: false,
+      hidden: false,
+      sick: false
+    }
 
     this.resources = {
       health: new Resource(10, 10),
@@ -52,24 +58,25 @@ class AbstractPhase {
         player: {
           name: player.name,
           job: player.job,
-          infected: player.infected,
+          genotype: player.genotype,
           resources: player.resources,
+          contidions: player.conditions,
           state: player.state
         },
         location: {
           name: player.location,
           players: _.filter(this.game.players, other => {
-            if (other.id === player.id) return false
+            if (other === player) return false
             if (other.location !== player.location) return false
-            if (other.hidden) return false
+            if (other.conditions.hidden) return false
             return true
           })
             .map(other => {
               return {
-                id: other.id,
-                name: other.name,
+                id: other.pid,
+                name: player.conditions.confused ? '???' : other.name,
                 state: other.state,
-                infected: player.infected ? other.infected : undefined
+                genotype: player.genotype === null ? undefined : other.genotype
               }
             })
         },
@@ -203,6 +210,9 @@ class Night extends AbstractPhase {
     game.players.forEach(player => {
       player.snapshot = snapshot
 
+      if (player.conditions.sick) player.resources.health.update(-1)
+      player.conditions.confused = false
+
       player.resources.health.update(Math.min(0, player.resources.hunger.value - 2) * 2)
       player.resources.hunger.update(-2)
 
@@ -210,7 +220,7 @@ class Night extends AbstractPhase {
 
       player.state = 'idle'
       player.location = 'courtyard'
-      player.hidden = false
+      player.conditions.hidden = false
 
       this.remaining += 1
     })
@@ -231,9 +241,11 @@ class Night extends AbstractPhase {
 }
 
 class Lobby {
-  constructor (game, roster) {
+  constructor (game, jobs, genotypes) {
     this.game = game
-    this.roster = roster
+
+    this.jobs = jobs
+    this.genotypes = genotypes
 
     this.startTime = null
     this.timer = null
@@ -262,7 +274,12 @@ class Lobby {
 
     this.game.push(playerID)
 
-    return { roster: this.roster, state: this.view(player) }
+    return {
+      jobs: this.jobs,
+      genotypes: this.genotypes,
+
+      state: this.view(player)
+    }
   }
 
   leave (playerID) {
@@ -280,16 +297,9 @@ class Lobby {
   }
 
   begin () {
-    const parasite = []
-    const size = this.game.players.length
-
-    for (let i = 0; i < size; ++i) {
-      parasite.push(i >= Math.floor(size / 2))
-    }
-
-    _.zipWith(this.game.players, _.shuffle(this.roster), _.shuffle(parasite), (player, job, infected) => {
+    _.zipWith(this.game.players, _.shuffle(this.jobs), _.shuffle(this.genotypes), (player, job, genotype) => {
       player.job = job
-      player.infected = infected
+      player.genotype = genotype || null
     })
 
     this.game.round = 1
@@ -306,17 +316,18 @@ class Lobby {
   }
 
   isFull () {
-    return this.game.players.length === this.roster.length
+    return this.game.players.length === this.jobs.length
   }
 }
 
 class Game extends EventEmitter {
-  constructor (roster) {
+  constructor (jobs, genotypes) {
     super()
 
-    if (_.some(roster, job => _.includes(jobs, job) === false)) throw error.BAD_REQUEST
+    if (_.some(jobs, job => _.includes(roster.jobs, job) === false)) throw error.BAD_REQUEST
+    if (_.some(genotypes, genotype => _.includes(roster.genotypes, genotype) === false)) throw error.BAD_REQUEST
 
-    this.phase = new Lobby(this, roster)
+    this.phase = new Lobby(this, jobs, genotypes)
     this.players = []
 
     this.base = null
@@ -358,12 +369,17 @@ module.exports = class {
   }
 
   async createGame (session, args) {
-    const { roster } = args
+    const { jobs, genotypes } = args
 
-    if (roster.length < 2) throw error.BAD_REQUEST
+    if (
+      jobs.length < 2 ||
+      jobs.length <= genotypes.length ||
+      genotypes.length < 1
+
+    ) throw error.BAD_REQUEST
 
     const gameID = shortid.generate()
-    const game = new Game(roster)
+    const game = new Game(jobs, genotypes)
 
     this.games.set(gameID, game)
 

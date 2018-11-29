@@ -9,7 +9,9 @@ module.exports = class Resource extends EventEmitter {
   }
 
   update (delta) {
+    const old = this.value
     this.set(this.value + delta)
+    return old - this.value
   }
 
   set (value) {
