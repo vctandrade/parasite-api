@@ -1,18 +1,9 @@
 
 module.exports = class Session {
   constructor (ws) {
+    ws.setMaxListeners(0)
+
     this.ws = ws
-
-    this.player = null
-    this.gameID = null
-    this.hostname = null
-
-    this.disconnector = () => {
-      this.gameID = null
-      this.hostname = null
-
-      this.push('disconnect')
-    }
   }
 
   async push (topic, data) {

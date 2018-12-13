@@ -7,6 +7,8 @@ module.exports = class Channel extends EventEmitter {
   constructor (service, hostname) {
     super()
 
+    this.setMaxListeners(0)
+
     this.service = service
     this.hostname = hostname
 

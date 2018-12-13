@@ -124,7 +124,7 @@ class AbstractPhase {
 
   getWinner () {
     if (_.every(this.game.players, player => player.state === 'dead' || player.genotype !== null) || this.game.resources.energy.value === 0) return 'infected'
-    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.days === 0) return 'humans'
+    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.days === 0) return 'survivors'
   }
 }
 
@@ -342,7 +342,7 @@ class End {
     return {
       phase: 'end',
       info: {
-        win: (player.genotype === null) === (this.winner === 'humans'),
+        win: (player.genotype === null) === (this.winner === 'survivors'),
         players: this.game.players
           .map(other => {
             return {
@@ -418,6 +418,7 @@ module.exports = class {
     const { redis } = modules
 
     this.redis = redis
+    this.disconnectors = new Map()
     this.games = new Map()
   }
 
@@ -436,7 +437,7 @@ module.exports = class {
 
     this.games.set(gameID, game)
 
-    game.once('close', () => {
+    game.on('close', () => {
       this.redis.hdel('game', gameID)
       this.games.delete(gameID)
     })
@@ -448,7 +449,12 @@ module.exports = class {
     const { playerID, playerName, gameID } = args
 
     const game = this.games.get(gameID)
-    session.ws.once('close', () => game.leave(playerID))
+    const disconnect = () => {
+      game.leave(playerID)
+    }
+
+    this.disconnectors.set(playerID, disconnect)
+    session.ws.on('close', disconnect)
 
     return game.join(playerID, playerName, session)
   }
@@ -457,6 +463,11 @@ module.exports = class {
     const { playerID, gameID } = args
 
     const game = this.games.get(gameID)
+    const disconnect = this.disconnectors.get(playerID)
+
+    this.disconnectors.delete(playerID)
+    session.ws.off('close', disconnect)
+
     return game.leave(playerID)
   }
 

@@ -72,7 +72,7 @@ module.exports = class {
   async login (session, args) {
     const { token } = args
 
-    if (session.player !== null) throw error.MULTIPLE_LOGINS
+    if (session.player !== undefined) throw error.MULTIPLE_LOGINS
 
     const player = await this.database.Player.findOne({ where: { token } })
 
@@ -80,12 +80,12 @@ module.exports = class {
     if (await this.redis.sadd('players', player.id) === 0) throw error.MULTIPLE_LOGINS
 
     session.player = player
-    this.sessions.set(player.id, session)
-
-    session.ws.on('close', () => {
+    session.disconnector = () => {
       this.logout(session)
-      this.sessions.delete(player.id)
-    })
+    }
+
+    session.ws.on('close', session.disconnector)
+    this.sessions.set(player.id, session)
 
     return {
       id: session.player.id,
@@ -96,11 +96,16 @@ module.exports = class {
   async logout (session) {
     await this.leaveGame(session)
     await this.redis.srem('players', session.player.id)
-    session.player = null
+
+    this.sessions.delete(session.player.id)
+    session.ws.off('close', session.disconnector)
+
+    session.player = undefined
+    session.disconnector = undefined
   }
 
   async updateAccount (session, args) {
-    if (session.player === null) throw error.UNAUTHORIZED
+    if (session.player === undefined) throw error.UNAUTHORIZED
 
     args = _.omit(args, 'id')
 
@@ -116,7 +121,7 @@ module.exports = class {
   }
 
   async createGame (session, args) {
-    if (session.player === null) throw error.UNAUTHORIZED
+    if (session.player === undefined) throw error.UNAUTHORIZED
 
     const channel = this.discovery.getAny('game')
     const response = await channel.request('createGame', args)
@@ -129,8 +134,8 @@ module.exports = class {
   async joinGame (session, args) {
     const { gameID } = args
 
-    if (session.player === null) throw error.UNAUTHORIZED
-    if (session.gameID !== null) throw error.MULTIPLE_JOINS
+    if (session.player === undefined) throw error.UNAUTHORIZED
+    if (session.gameID !== undefined) throw error.MULTIPLE_JOINS
 
     const hostname = await this.redis.hget('game', gameID)
     const channel = this.discovery.get(hostname)
@@ -139,33 +144,38 @@ module.exports = class {
 
     const game = await channel.request('joinGame', { playerID: session.player.id, playerName: session.player.name, gameID })
 
-    channel.ws.once('close', session.disconnector)
-
     session.gameID = gameID
     session.hostname = hostname
+    session.kicker = () => {
+      this.leaveGame(session)
+      session.push('kick')
+    }
+
+    channel.on('close', session.kicker)
 
     return game
   }
 
   async leaveGame (session) {
-    if (session.player === null) throw error.UNAUTHORIZED
+    if (session.player === undefined) throw error.UNAUTHORIZED
 
     const channel = this.discovery.get(session.hostname)
 
     if (channel) {
       channel.send('leaveGame', { playerID: session.player.id, gameID: session.gameID })
-      channel.ws.off('close', session.disconnector)
+      channel.off('close', session.kicker)
     }
 
-    session.gameID = null
-    session.hostname = null
+    session.gameID = undefined
+    session.hostname = undefined
+    session.kicker = undefined
   }
 
   async execute (session, args) {
     const { action, target } = args
 
-    if (session.player === null) throw error.UNAUTHORIZED
-    if (session.gameID === null) throw error.NOT_IN_GAME
+    if (session.player === undefined) throw error.UNAUTHORIZED
+    if (session.gameID === undefined) throw error.NOT_IN_GAME
 
     const channel = this.discovery.get(session.hostname)
 

@@ -49,8 +49,12 @@ module.exports = class Server {
 
     return method.call(this.service, session, args)
       .catch(reason => {
-        if (reason instanceof Error) throw error.INTERNAL
-        throw reason
+        if (reason instanceof Error) {
+          console.error('Internal Error:', reason)
+          throw error.INTERNAL
+        } else {
+          throw reason
+        }
       })
   }
 
