@@ -86,7 +86,8 @@ class AbstractPhase {
         },
         resources: player.snapshot,
         days: this.game.days
-      }
+      },
+      custom: this.info(player)
     }
   }
 
@@ -118,7 +119,7 @@ class AbstractPhase {
   execute (player, action, target) {
     if (player.state !== 'idle') throw error.BAD_REQUEST
 
-    const actions = this.getActions(player)
+    const actions = this.actions(player)
     const method = actions[action]
 
     if (method === undefined) throw error.BAD_REQUEST
@@ -133,7 +134,9 @@ class AbstractPhase {
     }
 
     this.game.push(player.id)
-    return { state: this.game.phase.view(player) }
+    return {
+      state: this.game.phase.view(player)
+    }
   }
 
   getWinner () {
@@ -163,7 +166,11 @@ class Dawn extends AbstractPhase {
     })
   }
 
-  getActions (player) {
+  info (player) {
+    return undefined
+  }
+
+  actions (player) {
     return {
       move: target => {
         const location = this.game.base[target]
@@ -187,11 +194,23 @@ class Day extends AbstractPhase {
   constructor (game, initiative) {
     super('day', game)
 
-    initiative.shift().state = 'idle'
     this.initiative = initiative
+    this.index = 0
+
+    initiative[0].state = 'idle'
   }
 
-  getActions (player) {
+  info (player) {
+    return {
+      queue: {
+        turn: this.index + 1,
+        size: this.initiative.length,
+        position: _.findIndex(this.initiative, other => other.id === player.id) + 1
+      }
+    }
+  }
+
+  actions (player) {
     return _.mapValues(actions, action => this.wrap(player, action))
   }
 
@@ -205,7 +224,7 @@ class Day extends AbstractPhase {
       player.snapshot = snapshot
 
       while (true) {
-        const next = this.initiative.shift()
+        const next = this.initiative[++this.index]
 
         if (next === undefined) {
           this.game.phase = new Night(this.game)
@@ -252,7 +271,11 @@ class Night extends AbstractPhase {
     })
   }
 
-  getActions (player) {
+  info (player) {
+    return undefined
+  }
+
+  actions (player) {
     return {
       ready: target => {
         player.state = 'busy'
