@@ -93,7 +93,10 @@ class AbstractPhase {
 
     player.session = session
 
-    return { state: this.view(player) }
+    return {
+      timestamp: Date.now(),
+      state: this.view(player)
+    }
   }
 
   leave (playerID) {
@@ -290,6 +293,7 @@ class Lobby {
       jobs: this.jobs,
       genotypes: this.genotypes,
 
+      timestamp: Date.now(),
       state: this.view(player)
     }
   }
