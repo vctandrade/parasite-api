@@ -37,6 +37,12 @@ module.exports = class {
     koa.use(route.get('/game/:id', deeplink))
   }
 
+  async ping () {
+    return {
+      timestamp: Date.now()
+    }
+  }
+
   async info () {
     return { version }
   }
