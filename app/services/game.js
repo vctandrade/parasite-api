@@ -314,7 +314,7 @@ class Lobby {
       player.genotype = genotype || null
     })
 
-    this.game.days = 30
+    this.game.days = 10
     this.game.base = locations.createBase()
     this.game.resources = {
       energy: new Resource(50, 50),
