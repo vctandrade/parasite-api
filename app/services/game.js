@@ -8,6 +8,7 @@ const shortid = require('shortid')
 
 const EventEmitter = require('events')
 const Resource = require('../shared/resource')
+const Timer = require('../shared/timer')
 
 class Player {
   constructor (id, name, session) {
@@ -49,6 +50,9 @@ class AbstractPhase {
   constructor (name, game) {
     this.name = name
     this.game = game
+
+    this.connected = game.players.length
+    this.abort = new Timer(() => game.close(), 300000)
   }
 
   view (player) {
@@ -91,6 +95,9 @@ class AbstractPhase {
 
     if (player === undefined) throw error.GAME_FULL
 
+    this.abort.stop()
+    ++this.connected
+
     player.session = session
 
     return {
@@ -102,6 +109,10 @@ class AbstractPhase {
   leave (playerID) {
     const player = _.find(this.game.players, { id: playerID })
     player.session = null
+
+    if (--this.connected === 0) {
+      this.abort.start()
+    }
   }
 
   execute (player, action, target) {
@@ -263,7 +274,11 @@ class Lobby {
     this.genotypes = genotypes
 
     this.startTime = null
-    this.timer = null
+
+    this.countdown = new Timer(() => this.begin(), 15000)
+    this.abort = new Timer(() => this.game.close(), 60000)
+
+    this.abort.start()
   }
 
   view (player) {
@@ -277,16 +292,17 @@ class Lobby {
   }
 
   join (playerID, playerName, session) {
-    if (this.isFull()) throw error.GAME_FULL
+    const remaining = this.jobs.length - this.game.players.length
 
-    const player = new Player(playerID, playerName, session)
-    this.game.players.push(player)
-
-    if (this.isFull()) {
-      this.timer = setTimeout(() => this.begin(), 15000)
-      this.startTime = Date.now() + 15000
+    if (remaining === 0) throw error.GAME_FULL
+    if (remaining === 1) {
+      this.startTime = this.countdown.start()
     }
 
+    const player = new Player(playerID, playerName, session)
+
+    this.abort.stop()
+    this.game.players.push(player)
     this.game.push(playerID)
 
     return {
@@ -301,10 +317,13 @@ class Lobby {
   leave (playerID) {
     _.remove(this.game.players, player => player.id === playerID)
 
-    clearTimeout(this.timer)
-    this.timer = null
+    if (this.game.players.length === 0) {
+      this.abort.start()
+    }
+
     this.startTime = null
 
+    this.countdown.stop()
     this.game.push(playerID)
   }
 
@@ -329,10 +348,6 @@ class Lobby {
 
     this.game.phase = new Dawn(this.game)
     this.game.push()
-  }
-
-  isFull () {
-    return this.game.players.length === this.jobs.length
   }
 }
 
