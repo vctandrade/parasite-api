@@ -397,14 +397,16 @@ class End {
     return {
       phase: 'end',
       info: {
-        win: (player.genotype === null) === (this.winner === 'survivors'),
+        win: (player.genotype === null) === (this.winner === 'survivors'), // deprecated
+        winner: this.winner,
         players: this.game.players
           .map(other => {
             return {
               name: other.name,
               job: other.job,
               genotype: other.genotype,
-              alive: other.state !== 'dead'
+              alive: other.state !== 'dead',
+              me: other.id === player.id
             }
           }),
         resources: this.game.resources,
