@@ -5,6 +5,7 @@ module.exports = class Resource extends EventEmitter {
     super()
 
     this.value = value
+    this.last = value
     this.cap = cap
   }
 
@@ -17,6 +18,14 @@ module.exports = class Resource extends EventEmitter {
   set (value) {
     this.value = Math.min(Math.max(0, value), this.cap)
     this.emit('update', this.value)
+  }
+
+  delta () {
+    return this.value - this.last
+  }
+
+  zero () {
+    this.last = this.value
   }
 
   toJSON () {

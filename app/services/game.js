@@ -149,13 +149,21 @@ class Dawn extends AbstractPhase {
   constructor (game) {
     super('dawn', game)
 
-    const snapshot = _.clone(this.game.resources)
-
     this.initiative = []
     this.remaining = 0
 
+    _.forOwn(game.resources, resource => {
+      resource.zero()
+    })
+
+    const snapshot = _.clone(this.game.resources)
+
     game.players.forEach(player => {
       player.snapshot = snapshot
+
+      _.forOwn(player.resources, resource => {
+        resource.zero()
+      })
 
       if (player.state === 'dead') return
 
@@ -272,7 +280,12 @@ class Night extends AbstractPhase {
   }
 
   info (player) {
-    return undefined
+    return {
+      report: {
+        player: _.mapValues(player.resources, resource => resource.delta() || undefined),
+        base: _.mapValues(this.game.resources, resource => resource.delta() || undefined)
+      }
+    }
   }
 
   actions (player) {
