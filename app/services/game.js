@@ -3,6 +3,7 @@ const _ = require('lodash')
 const actions = require('../shared/actions')
 const error = require('../shared/error')
 const locations = require('../shared/locations')
+const randomize = require('randomatic')
 const roster = require('../shared/roster')
 const shortid = require('shortid')
 
@@ -495,7 +496,7 @@ module.exports = class {
 
     ) throw error.BAD_REQUEST
 
-    const gameID = shortid.generate()
+    const gameID = randomize('A', 8)
     const game = new Game(jobs, genotypes)
 
     this.games.set(gameID, game)
