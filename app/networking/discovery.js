@@ -26,7 +26,7 @@ module.exports = class Discovery extends EventEmitter {
 
       const channel = new Channel(service, hostname)
 
-      channel.on('push', body => this.emit(service, body))
+      channel.on('push', body => this.emit('push', body))
       channel.on('close', () => this.channels.delete(hostname))
 
       this.channels.set(hostname, channel)

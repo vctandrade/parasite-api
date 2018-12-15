@@ -18,10 +18,14 @@ module.exports = class {
     this.auth = new OAuth2Client()
     this.sessions = new Map()
 
-    discovery.on('game', body => {
+    discovery.on('push', body => {
       const { topic, data } = body
 
       const session = this.sessions.get(data.playerID)
+
+      if (session === undefined) {
+        return
+      }
 
       if (topic !== 'internal') session.push(topic, data.content)
       else {

@@ -51,7 +51,7 @@ module.exports = class Channel extends EventEmitter {
       .finally(() => this.cb.delete(id))
   }
 
-  async handle (message) {
+  handle (message) {
     const { id, body } = JSON.parse(message)
 
     if (id === null) this.emit('push', body)
