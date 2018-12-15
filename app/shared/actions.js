@@ -394,7 +394,7 @@ module.exports = {
     ) throw error.BAD_REQUEST
 
     player.resources.stamina.update(-5)
-    player.resources.nutrition.update(other.resources.health.update(-3))
+    player.resources.health.update(other.resources.health.update(-3))
   },
 
   'transfuse': function (game, player, target) {

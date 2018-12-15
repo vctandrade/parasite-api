@@ -255,7 +255,7 @@ class Night extends AbstractPhase {
 
     this.remaining = 0
 
-    this.game.resources.energy.update(this.game.resources.generator.value - 10)
+    this.game.resources.energy.update(this.game.resources.generator.value - 5)
     this.game.resources.generator.update(-1)
 
     const snapshot = _.clone(this.game.resources)
@@ -368,10 +368,16 @@ class Lobby {
   }
 
   begin () {
-    _.zipWith(this.game.players, _.shuffle(this.jobs), _.shuffle(this.genotypes), (player, job, genotype) => {
-      player.job = job
-      player.genotype = genotype || null
-    })
+    _.zipWith(
+      _.shuffle(this.game.players),
+      _.shuffle(this.jobs),
+      _.shuffle(this.genotypes),
+
+      (player, job, genotype) => {
+        player.job = job
+        player.genotype = genotype || null
+      }
+    )
 
     this.game.days = 10
     this.game.base = locations.createBase()
