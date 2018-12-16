@@ -141,8 +141,12 @@ class AbstractPhase {
   }
 
   getWinner () {
-    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype !== null) || this.game.resources.energy.value === 0) return 'infected'
-    if (_.every(this.game.players, player => player.state === 'dead' || player.genotype === null) || this.game.days === 0) return 'survivors'
+    const PARASITE = 'infected'
+    const MANKIND = 'survivors'
+
+    if (_.every(this.game.players, player => player.genotype || player.state === 'dead')) return PARASITE
+    if (this.game.days === 0) return MANKIND
+    if (this.game.resources.energy.value === 0) return PARASITE
   }
 }
 
