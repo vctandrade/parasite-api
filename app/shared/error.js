@@ -11,6 +11,5 @@ module.exports = {
   GAME_FULL: create(4, 'Game full'),
   NOT_IN_GAME: create(7, 'Client hasn\'t joined any game yet'),
 
-  MULTIPLE_JOINS: create(5, 'Already in a game'),
   MULTIPLE_LOGINS: create(6, 'Already logged in')
 }

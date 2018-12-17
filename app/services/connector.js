@@ -142,7 +142,9 @@ module.exports = class {
     const { gameID } = args
 
     if (session.player === undefined) throw error.UNAUTHORIZED
-    if (session.gameID !== undefined) throw error.MULTIPLE_JOINS
+    if (session.gameID !== undefined) {
+      await this.leaveGame(session)
+    }
 
     const hostname = await this.redis.hget('game', gameID)
     const channel = this.discovery.get(hostname)
@@ -169,7 +171,7 @@ module.exports = class {
     const channel = this.discovery.get(session.hostname)
 
     if (channel) {
-      channel.send('leaveGame', { playerID: session.player.id, gameID: session.gameID })
+      await channel.request('leaveGame', { playerID: session.player.id, gameID: session.gameID })
       channel.off('close', session.kicker)
     }
 
