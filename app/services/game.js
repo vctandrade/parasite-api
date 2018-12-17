@@ -324,7 +324,7 @@ class Lobby {
     return {
       phase: 'lobby',
       info: {
-        players: this.game.players.map(other => other.name),
+        players: this.game.players.map(other => other.name)
       }
     }
   }
