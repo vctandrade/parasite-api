@@ -8,11 +8,17 @@ module.exports = class Timer {
   }
 
   start () {
-    if (this.timeout !== null) {
+    if (this.timeout) {
       throw new Error('Timer already started')
     }
 
-    this.timeout = setTimeout(this.callback, this.delay)
+    this.timeout = setTimeout(
+      () => {
+        this.timeout = null
+        this.callback()
+      },
+      this.delay
+    )
   }
 
   stop () {
