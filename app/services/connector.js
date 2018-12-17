@@ -42,9 +42,6 @@ module.exports = class {
   }
 
   async ping () {
-    return {
-      timestamp: Date.now()
-    }
   }
 
   async info () {

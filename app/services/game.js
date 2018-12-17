@@ -314,8 +314,6 @@ class Lobby {
     this.jobs = jobs
     this.genotypes = genotypes
 
-    this.startTime = null
-
     this.countdown = new Timer(() => this.begin(), 15000)
     this.abort = new Timer(() => this.game.close(), 60000)
 
@@ -327,7 +325,6 @@ class Lobby {
       phase: 'lobby',
       info: {
         players: this.game.players.map(other => other.name),
-        startTime: this.startTime
       }
     }
   }
@@ -337,7 +334,7 @@ class Lobby {
 
     if (remaining === 0) throw error.GAME_FULL
     if (remaining === 1) {
-      this.startTime = this.countdown.start()
+      this.countdown.start()
     }
 
     const player = new Player(playerID, playerName, session)
@@ -361,8 +358,6 @@ class Lobby {
     if (this.game.players.length === 0) {
       this.abort.start()
     }
-
-    this.startTime = null
 
     this.countdown.stop()
     this.game.push(playerID)

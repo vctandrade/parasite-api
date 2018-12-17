@@ -13,7 +13,6 @@ module.exports = class Timer {
     }
 
     this.timeout = setTimeout(this.callback, this.delay)
-    return Date.now() + this.delay
   }
 
   stop () {
