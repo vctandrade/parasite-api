@@ -91,15 +91,15 @@ module.exports = {
   'research': function (game, player, target) {
     if (
       player.location.name !== 'laboratory' ||
-      player.resources.stamina.value < 7 ||
-      game.resources.energy.value < 5
+      player.resources.stamina.value < 4 ||
+      game.resources.energy.value < 7
 
     ) throw error.BAD_REQUEST
 
-    player.resources.stamina.update(-7)
-    game.resources.energy.update(-5)
+    player.resources.stamina.update(-4)
+    game.resources.energy.update(-7)
 
-    game.resources.remedy.update(+2)
+    game.resources.remedy.update(+3)
   },
 
   // Job actions
