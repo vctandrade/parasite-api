@@ -12,9 +12,8 @@ module.exports = class Discovery extends EventEmitter {
 
     this.channels = new Map()
 
-    this.ad = {
-      service, hostname: os.hostname()
-    }
+    this.service = service
+    this.hostname = os.hostname()
 
     this.pub = redisClient
     this.sub = redisClient.duplicate()
@@ -22,7 +21,7 @@ module.exports = class Discovery extends EventEmitter {
     this.sub.on('message', (topic, message) => {
       const { service, hostname } = JSON.parse(message)
 
-      if (hostname === this.ad.hostname || this.channels.has(hostname)) return
+      if (hostname === this.hostname || this.channels.has(hostname)) return
 
       const channel = new Channel(service, hostname)
 
@@ -37,7 +36,11 @@ module.exports = class Discovery extends EventEmitter {
   }
 
   advertise () {
-    const message = JSON.stringify(this.ad)
+    const message = JSON.stringify({
+      service: this.service,
+      hostname: this.hostname
+    })
+
     this.pub.publish('discovery', message)
   }
 

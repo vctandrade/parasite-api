@@ -7,7 +7,8 @@
     "port": 6379
   },
   "WebSocket": {
-    "port": 80,
+    "externalPort": 80,
+    "internalPort": 8080,
     "timeout": 2000,
     "checkInterval": 10000
   },

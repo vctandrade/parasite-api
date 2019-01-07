@@ -9,10 +9,22 @@ module.exports = class Server {
   constructor (service, koa) {
     this.service = service
 
-    this.http = http.createServer(koa.callback())
+    this.external = http.createServer(koa.callback())
+    this.internal = http.createServer()
 
-    this.http.on('upgrade', (request, socket, head) => {
-      this.wss.handleUpgrade(request, socket, head, ws => this.wss.emit('connection', ws, request))
+    const handleUpgrade = (request, socket, head, source) => {
+      this.wss.handleUpgrade(request, socket, head, ws => {
+        ws.source = source
+        this.wss.emit('connection', ws, request)
+      })
+    }
+
+    this.external.on('upgrade', (request, socket, head) => {
+      handleUpgrade(request, socket, head, 'external')
+    })
+
+    this.internal.on('upgrade', (request, socket, head) => {
+      handleUpgrade(request, socket, head, 'internal')
     })
 
     this.wss = new WebSocket.Server({ noServer: true })
@@ -69,12 +81,16 @@ module.exports = class Server {
   }
 
   start () {
-    this.http.listen(config.get('WebSocket.port'))
+    this.external.listen(config.get('WebSocket.externalPort'))
+    this.internal.listen(config.get('WebSocket.internalPort'))
+
     this.interval = setInterval(() => this.healthcheck(), config.get('WebSocket.checkInterval'))
   }
 
   close () {
-    this.http.close()
+    this.external.close()
+    this.internal.close()
+
     clearInterval(this.interval)
   }
 }

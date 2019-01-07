@@ -12,7 +12,7 @@ module.exports = class Channel extends EventEmitter {
     this.service = service
     this.hostname = hostname
 
-    const port = config.get('WebSocket.port')
+    const port = config.get('WebSocket.internalPort')
     const url = `ws://${hostname}:${port}`
 
     this.nc = 0

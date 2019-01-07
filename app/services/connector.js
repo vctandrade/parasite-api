@@ -79,12 +79,26 @@ module.exports = class {
   async login (session, args) {
     const { token } = args
 
-    if (session.player !== undefined) throw error.MULTIPLE_LOGINS
-
     const player = await this.database.Player.findOne({ where: { token } })
 
     if (player === null) throw error.UNAUTHORIZED
-    if (await this.redis.sadd('players', player.id) === 0) throw error.MULTIPLE_LOGINS
+
+    if (session.player !== undefined) {
+      await this.logout(session)
+    }
+
+    const hostname = await this.redis.hget('players', player.id)
+
+    if (hostname === this.discovery.hostname) await this.disconnect(null, { playerID: player.id })
+    else {
+      const channel = this.discovery.get(hostname)
+
+      if (channel) {
+        await channel.request('disconnect', { playerID: player.id })
+      }
+    }
+
+    await this.redis.hset('players', player.id, this.discovery.hostname)
 
     session.player = player
     session.disconnector = () => {
@@ -95,20 +109,33 @@ module.exports = class {
     this.sessions.set(player.id, session)
 
     return {
-      id: session.player.id,
-      name: session.player.name
+      name: player.name
     }
   }
 
   async logout (session) {
     await this.leaveGame(session)
-    await this.redis.srem('players', session.player.id)
+    await this.redis.hdel('players', session.player.id)
 
     this.sessions.delete(session.player.id)
     session.ws.off('close', session.disconnector)
 
     session.player = undefined
     session.disconnector = undefined
+  }
+
+  async disconnect (session, args) {
+    const { playerID } = args
+
+    if (session === null || session.ws.source === 'internal');
+    else throw error.UNAUTHORIZED
+
+    const target = this.sessions.get(playerID)
+
+    if (target) {
+      await this.logout(target)
+      await target.push('disconnect')
+    }
   }
 
   async updateAccount (session, args) {
@@ -147,10 +174,10 @@ module.exports = class {
     }
 
     const hostname = await this.redis.hget('game', gameID)
-    const channel = this.discovery.get(hostname)
 
     if (hostname === null) throw error.BAD_REQUEST
 
+    const channel = this.discovery.get(hostname)
     const game = await channel.request('joinGame', { playerID: session.player.id, playerName: session.player.name, gameID })
 
     session.gameID = gameID
