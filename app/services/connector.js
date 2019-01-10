@@ -9,11 +9,12 @@ const { version } = require('../package.json')
 
 module.exports = class {
   constructor (modules) {
-    const { discovery, database, redis, koa } = modules
+    const { discovery, database, redis, redlock, koa } = modules
 
     this.discovery = discovery
     this.database = database
     this.redis = redis
+    this.redlock = redlock
 
     this.auth = new OAuth2Client()
     this.sessions = new Map()
@@ -87,6 +88,7 @@ module.exports = class {
       await this.logout(session)
     }
 
+    const lock = await this.redlock.lock('locks:player:' + player.id, 1000)
     const hostname = await this.redis.hget('players', player.id)
 
     if (hostname === this.discovery.hostname) await this.disconnect(null, { playerID: player.id })
@@ -99,6 +101,7 @@ module.exports = class {
     }
 
     await this.redis.hset('players', player.id, this.discovery.hostname)
+    await lock.unlock()
 
     session.player = player
     session.disconnector = () => {
@@ -114,11 +117,11 @@ module.exports = class {
   }
 
   async logout (session) {
-    await this.leaveGame(session)
-    await this.redis.hdel('players', session.player.id)
-
-    this.sessions.delete(session.player.id)
     session.ws.off('close', session.disconnector)
+    this.sessions.delete(session.player.id)
+
+    await this.redis.hdel('players', session.player.id)
+    await this.leaveGame(session)
 
     session.player = undefined
     session.disconnector = undefined
@@ -133,8 +136,8 @@ module.exports = class {
     const target = this.sessions.get(playerID)
 
     if (target) {
-      await this.logout(target)
       await target.push('disconnect')
+      await this.logout(target)
     }
   }
 

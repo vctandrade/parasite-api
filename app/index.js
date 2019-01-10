@@ -1,14 +1,15 @@
 require('dotenv').config()
 
 const config = require('config')
-const database = require('./shared/database')
 const exitHook = require('exit-hook')
-const redis = require('async-redis')
 const services = require('./services')
 const program = require('commander')
 
+const Database = require('./shared/database')
 const Discovery = require('./networking/discovery')
 const Koa = require('koa')
+const Redis = require('ioredis')
+const Redlock = require('redlock')
 const Sequelize = require('sequelize')
 const Server = require('./networking/server')
 
@@ -35,9 +36,12 @@ program
     const sequelize = new Sequelize(config.get('Sequelize'))
 
     modules.koa = new Koa()
-    modules.redis = redis.createClient(config.get('Redis'))
-    modules.database = database.create(sequelize)
+    modules.redis = new Redis(config.get('Redis'))
+    modules.database = new Database(sequelize)
     modules.discovery = new Discovery(id, modules.redis)
+    modules.redlock = new Redlock(
+      [modules.redis]
+    )
 
     const service = new Service(modules)
     const server = new Server(service, modules.koa)
@@ -49,7 +53,6 @@ program
       sequelize.close()
     })
 
-    modules.redis.on('error', abort)
     await sequelize.sync()
       .catch(abort)
 

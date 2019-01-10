@@ -7,7 +7,7 @@ const Channel = require('./channel')
 const EventEmitter = require('events')
 
 module.exports = class Discovery extends EventEmitter {
-  constructor (service, redisClient) {
+  constructor (service, redis) {
     super()
 
     this.channels = new Map()
@@ -15,8 +15,8 @@ module.exports = class Discovery extends EventEmitter {
     this.service = service
     this.hostname = os.hostname()
 
-    this.pub = redisClient
-    this.sub = redisClient.duplicate()
+    this.pub = redis
+    this.sub = redis.duplicate()
 
     this.sub.on('message', (topic, message) => {
       const { service, hostname } = JSON.parse(message)

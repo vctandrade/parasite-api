@@ -1,8 +1,8 @@
 const Sequelize = require('sequelize')
 
-module.exports = {
-  create: function (sequelize) {
-    const Player = sequelize.define('player', {
+module.exports = class Database {
+  constructor (sequelize) {
+    this.Player = sequelize.define('player', {
       id: {
         type: Sequelize.STRING,
         primaryKey: true
@@ -19,7 +19,5 @@ module.exports = {
         unique: true
       }
     })
-
-    return { Player }
   }
 }

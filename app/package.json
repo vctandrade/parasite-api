@@ -1,6 +1,6 @@
 {
   "name": "parasite-api",
-  "version": "7.3.3",
+  "version": "7.3.4",
   "description": "The backend of Parasite: the Game",
   "scripts": {
     "test": "eslint .",
@@ -18,17 +18,18 @@
     "npm": ">=6.0.0"
   },
   "dependencies": {
-    "async-redis": "^1.1.4",
     "commander": "^2.18.0",
     "config": "^2.0.1",
     "dotenv": "^6.0.0",
     "exit-hook": "^2.0.0",
     "google-auth-library": "^2.0.0",
+    "ioredis": "^4.3.0",
     "koa": "^2.5.3",
     "koa-route": "^3.2.0",
     "lodash": "^4.17.10",
     "mysql2": "^1.6.1",
     "randomatic": "^3.1.1",
+    "redlock": "^3.1.2",
     "sequelize": "^4.39.0",
     "shortid": "^2.2.13",
     "uuid": "^3.3.2",
