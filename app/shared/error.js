@@ -9,5 +9,5 @@ module.exports = {
   BAD_REQUEST: create(3, 'Request invalid'),
 
   GAME_FULL: create(4, 'Game full'),
-  NOT_IN_GAME: create(7, 'Client hasn\'t joined any game yet')
+  NOT_IN_GAME: create(7, 'Client is not in a game')
 }

@@ -462,11 +462,11 @@ class Game extends EventEmitter {
   }
 
   close () {
-    this.emit('close')
-
     this.players.forEach(player => {
       player.push('internal', { route: 'leaveGame' })
     })
+
+    setTimeout(() => this.emit('close'), 10000)
   }
 
   push (playerID) {
