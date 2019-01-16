@@ -1,6 +1,6 @@
 {
   "name": "parasite-api",
-  "version": "7.3.4",
+  "version": "7.4.0",
   "description": "The backend of Parasite: the Game",
   "scripts": {
     "test": "eslint .",

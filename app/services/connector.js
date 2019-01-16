@@ -1,6 +1,7 @@
 const _ = require('lodash')
 
 const error = require('../shared/error')
+const packs = require('../shared/packs')
 const route = require('koa-route')
 const uuid = require('uuid/v4')
 
@@ -64,7 +65,8 @@ module.exports = class {
           id: payload.sub
         },
         defaults: {
-          name: payload.given_name
+          name: payload.given_name,
+          packs: ['basic']
         }
       })
       .spread((player, created) => player)
@@ -112,7 +114,8 @@ module.exports = class {
     this.sessions.set(player.id, session)
 
     return {
-      name: player.name
+      name: player.name,
+      packs: player.packs
     }
   }
 
@@ -144,7 +147,7 @@ module.exports = class {
   async updateAccount (session, args) {
     if (session.player === undefined) throw error.UNAUTHORIZED
 
-    args = _.omit(args, 'id')
+    args = _.pick(args, 'name')
 
     await session.player.update(args)
       .catch(async reason => {
@@ -153,12 +156,44 @@ module.exports = class {
       })
 
     return {
-      name: session.player.name
+      name: session.player.name,
+      packs: session.player.packs
+    }
+  }
+
+  async buy (session, args) {
+    const { pack } = args
+
+    if (session.player === undefined) throw error.UNAUTHORIZED
+    if (_(packs).omit(session.player.packs).has(pack) === false) throw error.BAD_REQUEST
+
+    session.player.packs = _.concat(session.player.packs, pack)
+    await session.player.save()
+
+    return {
+      name: session.player.name,
+      packs: session.player.packs
     }
   }
 
   async createGame (session, args) {
     if (session.player === undefined) throw error.UNAUTHORIZED
+
+    const roster = _
+      .chain(packs)
+      .pick(session.player.packs)
+      .cloneDeep()
+      .reduce((accumulator, value) => {
+        const customizer = _.ary(_.union, 2)
+        return _.assignWith(accumulator, value, customizer)
+      })
+      .value()
+
+    const valid = _(args)
+      .map((group, key) => _(group).map(value => _.includes(roster[key], value)).every())
+      .every()
+
+    if (valid === false) throw error.BAD_REQUEST
 
     const channel = this.discovery.getAny('game')
     const response = await channel.request('createGame', args)

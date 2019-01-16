@@ -17,6 +17,18 @@ module.exports = class Database {
       token: {
         type: Sequelize.UUID,
         unique: true
+      },
+      packs: {
+        type: Sequelize.STRING,
+        defaultValue: '[]',
+        get: function () {
+          const string = this.getDataValue('packs')
+          return JSON.parse(string)
+        },
+        set: function (value) {
+          const string = JSON.stringify(value)
+          return this.setDataValue('packs', string)
+        }
       }
     })
   }

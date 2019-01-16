@@ -4,7 +4,6 @@ const actions = require('../shared/actions')
 const error = require('../shared/error')
 const locations = require('../shared/locations')
 const randomize = require('randomatic')
-const roster = require('../shared/roster')
 const shortid = require('shortid')
 
 const EventEmitter = require('events')
@@ -368,16 +367,17 @@ class Lobby {
   }
 
   begin () {
-    _.zipWith(
-      _.shuffle(this.game.players),
-      _.shuffle(this.jobs),
-      _.shuffle(this.genotypes),
+    _(this.game.players)
+      .zip(
+        _.shuffle(this.jobs),
+        _.shuffle(this.genotypes)
+      )
+      .each(group => {
+        const [ player, job, genotype ] = group
 
-      (player, job, genotype) => {
         player.job = job
         player.genotype = genotype || null
-      }
-    )
+      })
 
     this.game.days = 10
     this.game.base = locations.createBase()
@@ -437,9 +437,6 @@ class Game extends EventEmitter {
   constructor (jobs, genotypes) {
     super()
 
-    if (_.some(jobs, job => _.includes(roster.jobs, job) === false)) throw error.BAD_REQUEST
-    if (_.some(genotypes, genotype => _.includes(roster.genotypes, genotype) === false)) throw error.BAD_REQUEST
-
     this.phase = new Lobby(this, jobs, genotypes)
     this.players = []
 
@@ -489,7 +486,6 @@ module.exports = class {
     const { jobs, genotypes } = args
 
     if (
-      jobs.length < 2 ||
       jobs.length <= genotypes.length ||
       genotypes.length < 1
 

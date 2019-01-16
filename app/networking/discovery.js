@@ -49,12 +49,13 @@ module.exports = class Discovery extends EventEmitter {
   }
 
   getAny (service) {
-    let pool
-
-    pool = [...this.channels.values()]
-    pool = _.filter(pool, c => c.service === service)
-
-    return _.sample(pool)
+    return _
+      .chain(this.channels)
+      .invoke('values')
+      .thru(Array.from)
+      .filter(c => c.service === service)
+      .sample()
+      .value()
   }
 
   stop () {
