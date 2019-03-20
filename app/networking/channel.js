@@ -73,6 +73,6 @@ module.exports = class Channel extends EventEmitter {
   }
 
   toString () {
-    return `Channel{service="${this.service}" host="${this.host}"}`
+    return `Channel{service="${this.service}" hostname="${this.hostname}"}`
   }
 }

@@ -1,7 +1,6 @@
 const _ = require('lodash')
 
 const config = require('config')
-const os = require('os')
 
 const Channel = require('./channel')
 const EventEmitter = require('events')
@@ -13,7 +12,7 @@ module.exports = class Discovery extends EventEmitter {
     this.channels = new Map()
 
     this.service = service
-    this.hostname = os.hostname()
+    this.hostname = config.util.getEnv('HOSTNAME')
 
     this.pub = redis
     this.sub = redis.duplicate()

@@ -1,6 +1,6 @@
 {
   "name": "parasite-api",
-  "version": "7.4.0",
+  "version": "7.4.1",
   "description": "The backend of Parasite: the Game",
   "scripts": {
     "test": "eslint .",
@@ -26,7 +26,7 @@
     "ioredis": "^4.3.0",
     "koa": "^2.5.3",
     "koa-route": "^3.2.0",
-    "lodash": "^4.17.10",
+    "lodash": "^4.17.11",
     "mysql2": "^1.6.1",
     "randomatic": "^3.1.1",
     "redlock": "^3.1.2",
@@ -36,7 +36,7 @@
     "ws": "^6.0.0"
   },
   "devDependencies": {
-    "eslint": "^5.5.0",
+    "eslint": "^5.15.3",
     "eslint-config-standard": "^12.0.0",
     "eslint-plugin-import": "^2.14.0",
     "eslint-plugin-node": "^7.0.1",
